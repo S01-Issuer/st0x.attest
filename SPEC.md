@@ -71,6 +71,31 @@ The signer set therefore SHOULD live in contract storage that the consuming
 policy reads, rather than as constants inlined in expression bytecode, so that
 who is trusted stays legible on chain and changing it is an observable event.
 
+### 2.1.1 The signer set
+
+The operators form a pool of N with a threshold of M, where M is less than N.
+Requiring every operator to sign would mean one operator being down stops
+minting. Ten operators with a threshold of three is an illustrative shape.
+
+All operators in the pool MUST be equally difficult to compromise.
+
+Operators MAY be added purely for availability redundancy. The minter does not
+have to contact all of them.
+
+One operator is the **lead**, and its attestation is mandatory. The lead is the
+entity legally issuing the tokens being minted. The other operators are not
+legally responsible for the issuance; they provide redundancy against the lead
+being compromised, and do not substitute for it.
+
+### 2.1.2 What an attacker must compromise
+
+To reach the signing threshold and raise the effective mint cap, an attacker
+must compromise all of:
+
+1. The signatory that requests the attestations and performs the mint.
+2. The lead, which is the issuer's signer on the price feeds.
+3. At least M of the pool operators.
+
 ### 2.2 What co-signing does and does not contain
 
 Consider an attacker holding both the right to mint and the primary attestor's
