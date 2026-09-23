@@ -24,11 +24,14 @@ The requirements as stated.
 6. No aggregation is required. Whether it is a median, what the aggregation
    logic is, and which oracle things come from do not have to be predetermined,
    because the mint admin sets them in the Rainlang itself.
+7. A Rainlang subparser is included, so that expressions do not have to use
+   awkward signed context positions.
 
 ### Example rendering of the item 5 expression
 
-How the example in item 5 would look written out. It is one expression a mint
-admin could write, not the required check.
+How the example in item 5 would look written out, using the subparser from item
+7. It is one expression a mint admin could write, not the required check. The
+subparser word names below are illustrative; they are not decided.
 
 ```rainlang
 #lead-signer !The mandatory lead signer, S01 as issuer.
@@ -37,32 +40,32 @@ admin could write, not the required check.
 #max-deviation !Fractional deviation a pool value may have from the lead. 0.01 is 1%.
 
 #weighting
-using-words-from raindex-subparser
+using-words-from st0x-attest-subparser
 
-/* The lead is mandatory. Signed context 0 must be the issuer's signer. */
+/* The lead is mandatory. Attestation 0 must come from the issuer's signer. */
 :ensure(
-  equal-to(signer<0>() lead-signer)
+  equal-to(attestor<0>() lead-signer)
   "Lead attestation missing"
 ),
 
 /* Pool operators. This example collects M = 2 from the allowlist. */
 :ensure(
-  any(equal-to(signer<1>() operator-1) equal-to(signer<1>() operator-2))
-  "Signer 1 not an allowlisted operator"
+  any(equal-to(attestor<1>() operator-1) equal-to(attestor<1>() operator-2))
+  "Attestor 1 not an allowlisted operator"
 ),
 :ensure(
-  any(equal-to(signer<2>() operator-1) equal-to(signer<2>() operator-2))
-  "Signer 2 not an allowlisted operator"
+  any(equal-to(attestor<2>() operator-1) equal-to(attestor<2>() operator-2))
+  "Attestor 2 not an allowlisted operator"
 ),
 :ensure(
-  is-zero(equal-to(signer<1>() signer<2>()))
+  is-zero(equal-to(attestor<1>() attestor<2>()))
   "Same operator twice"
 ),
 
-/* The price each of them signed. */
-lead-price: signed-context<0 0>(),
-price-1: signed-context<1 0>(),
-price-2: signed-context<2 0>(),
+/* The price each of them attested, by name rather than by position. */
+lead-price: attested-price<0>(),
+price-1: attested-price<1>(),
+price-2: attested-price<2>(),
 
 /* Every pool value must be within max-deviation of the lead's. */
 tolerance: mul(lead-price max-deviation),
@@ -76,9 +79,8 @@ tolerance: mul(lead-price max-deviation),
 ),
 
 /* Any of the values may be taken once they agree. This takes the lead's and
- * weights the requested mint amount by it. Which context slot carries the
- * requested amount is not decided. */
-weighting: mul(context<0 0>() lead-price);
+ * weights the requested mint amount by it. */
+weighting: mul(mint-amount() lead-price);
 ```
 
 ## 3. The operators
