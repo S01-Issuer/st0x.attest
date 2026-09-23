@@ -27,14 +27,14 @@ The requirements as stated.
 ## 2. The on-chain check
 
 8. The on-chain check is a Rainlang expression. It takes the values available
-    in context — such as signed context, and the token input amount being
-    requested for minting — and converts them into a weighting, or potentially
-    reverts.
+   in context — such as signed context, and the token input amount being
+   requested for minting — and converts them into a weighting, or potentially
+   reverts.
 9. What that expression checks is up to the mint admin, and there are many
-    possible. Taking any of the signed values provided they are all within a
-    certain range of each other, with a certain number of signed values and a
-    1%, 2% or 5% deviation, is one expression a mint admin could write. It is an
-    example of what is possible, not the required check.
+   possible. Taking any of the signed values provided they are all within a
+   certain range of each other, with a certain number of signed values and a
+   1%, 2% or 5% deviation, is one expression a mint admin could write. It is an
+   example of what is possible, not the required check.
 10. No aggregation is required. Whether it is a median, what the aggregation
     logic is, and which oracle things come from do not have to be predetermined,
     because the mint admin sets them in the Rainlang itself.
@@ -44,10 +44,10 @@ The requirements as stated.
 12. Two words are added to Rainlang, because the `ensure` forms are awkward
     without them.
     - `in`, so an expression can say that a signer is in a list. The operand
-     specifies how many of the inputs are the things being checked: the first
-     that many values are those things, and all subsequent values are the set
-     they must be in. One list at a time for the first implementation; two
-     lists are possible later.
+      specifies how many of the inputs are the things being checked: the first
+      that many values are those things, and all subsequent values are the set
+      they must be in. One list at a time for the first implementation; two
+      lists are possible later.
     - `unique`, to assert that all of the values passed to it are unique.
 13. An `agree` word is added to Rainlang, because the tolerance logic is awkward
     too. It takes the tolerance as its first argument, as a fractional limit,
