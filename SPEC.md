@@ -46,8 +46,8 @@ The requirements as stated.
 How the example in item 5 would look written out, using the subparser from item
 7 and the words from items 8 and 9. It is one expression a mint admin could
 write, not the required check. `lead`, `attestor` and `lead-price` are
-the words from item 7; `attested-price` and `mint-amount` are illustrative and
-not decided.
+the words from item 7; `attested-price`, `lead-time`, `attested-time` and
+`mint-amount` are illustrative and not decided.
 
 ```rainlang
 #lead-signer !The mandatory lead signer, S01 as issuer.
@@ -58,6 +58,7 @@ not decided.
 #operator-5 !An allowlisted pool operator.
 #operator-6 !An allowlisted pool operator.
 #max-deviation !Fractional limit on how far apart the attested values may be. 0.01 is 1%.
+#max-age !Oldest attestation accepted, in seconds.
 
 #weighting
 using-words-from st0x-attest-subparser
@@ -82,6 +83,15 @@ using-words-from st0x-attest-subparser
 :ensure(
   unique(lead() attestor<0>() attestor<1>())
   "Same operator twice"
+),
+
+/* None of them stale. The oldest of the three sets the age. */
+:ensure(
+  less-than-or-equal-to(
+    sub(now() min(lead-time() attested-time<0>() attested-time<1>()))
+    max-age
+  )
+  "Attestation too old"
 ),
 
 /* Highest and lowest no more than max-deviation apart. */
