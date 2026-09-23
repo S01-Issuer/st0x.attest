@@ -51,9 +51,11 @@ The requirements as stated.
 13. The expression checks the attested price against absolute minimum and
     maximum bounds. Attestors agreeing with each other does not catch a price
     they all got wrong.
-14. Those bounds are a variadic word. It takes the minimum and the maximum as
-    its first two arguments and then all of the subsequent values, and checks
-    that every one of them falls between the two bounds.
+14. The ordering comparisons are variadic the same way, following Clojure's
+    `<`: each argument is compared to the next, so
+    `less-than-or-equal-to(a b c)` holds when `a <= b <= c`. The bounds check
+    is then a single call with the minimum first and the maximum last, and no
+    new word is needed for it.
 
 ### Example rendering of the item 5 expression
 
@@ -61,8 +63,8 @@ How the example in item 5 would look written out, using the subparser from item
 7 and the words from items 8 to 14. It is one expression a mint admin
 could write, not the required check. `lead`, `attestor` and `lead-price` are
 the words from item 7; `attested-price`, `lead-time`, `attested-time`,
-`lead-symbol`, `attested-symbol`, `mint-symbol`, `mint-amount` and the name
-`within` for the item 14 word are illustrative and not decided.
+`lead-symbol`, `attested-symbol`, `mint-symbol` and `mint-amount` are
+illustrative and not decided.
 
 ```rainlang
 #lead-signer !The mandatory lead signer, S01 as issuer.
@@ -125,13 +127,11 @@ using-words-from st0x-attest-subparser
   "Attestors disagree"
 ),
 
-/* Absolute bounds on every attested price. Agreement between the attestors
- * does not catch a price they all got wrong. */
+/* Absolute bounds on the price that gets used. Agreement between the
+ * attestors does not catch a price they all got wrong. The other two are
+ * already within max-deviation of this one. */
 :ensure(
-  within(
-    min-price max-price
-    lead-price() attested-price<0>() attested-price<1>()
-  )
+  less-than-or-equal-to(min-price lead-price() max-price)
   "Price outside bounds"
 ),
 
