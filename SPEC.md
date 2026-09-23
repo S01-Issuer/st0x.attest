@@ -177,14 +177,16 @@ weighting: mul(mint-amount() lead-price());
 These concern the mint caps in `st0x.deploy`, not the binary above.
 
 21. The weighting produced by the Rainlang in section 2 is what increases the
-    leaky bucket, in place of global and per-token mappings holding raw token
-    amounts.
-22. The per-token mappings are then not needed. Only a single global limit per
-    address is needed, because the weightings can contribute towards the global
-    limit in whatever way is wanted, and the signed context can be provided by
-    different attestors.
-23. The corporate action logic is removed from the mint caps altogether, since
-    the weighting is value-based.
+    leaky bucket, in place of mappings holding raw token amounts. The Rainlang
+    is what converts amounts into values.
+22. The per-token logic is removed from the orchestrator branch. That branch
+    has a per-token limit and no limits for recipients. The per-token limit
+    goes, and value-based limits per recipient and per minter take its place.
+    Only those two are needed; the weightings can contribute towards them in
+    whatever way is wanted, and the signed context can be provided by different
+    attestors.
+23. The corporate action logic is removed from the orchestrator branch
+    altogether, since the weighting is value-based.
 24. Deploying different algorithms and weightings is then something governance
     handles, without rewriting the smart contract logic.
 25. The leaky bucket logic converts from Rain fixed point to Rain Floats.
