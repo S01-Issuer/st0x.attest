@@ -205,6 +205,12 @@ MUST require the `Z` suffix, rejecting numeric UTC offsets, so that two signers
 cannot disagree about the same instant. Sub-unit precision beyond the declared
 unit MUST abort rather than truncate, per 6.3 step 3.
 
+Profiles MUST NOT assume the fractional-seconds component is fixed width, and
+MUST accept its complete absence. RFC 3339 emitters commonly trim trailing
+zeros — Go's `RFC3339Nano` does — so the same field can arrive with nine
+digits, with eight, or with no decimal point at all. A parser MUST normalise by
+right-padding to the declared unit rather than by slicing at a fixed offset.
+
 ## 7. Determinism and convergence
 
 Uncoordinated signers can only form a quorum if they independently produce
