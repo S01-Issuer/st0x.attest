@@ -1,91 +1,82 @@
-# st0x.attest core specification
+# st0x.attest
 
-Version `st0x.attest.v1`.
+Sign an HTTP API response so a contract can verify it on chain.
 
-The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are to be interpreted
-as in RFC 2119.
+**Status: requirements settled, mechanism not decided.** Section 1 is what was
+asked for. Section 2 lists the decisions that have to be made to satisfy it and
+have not been. Everything from section 3 onward is a proposal written to be
+argued with, not a specification to build against. Nothing in it has been
+approved.
 
-## 1. What this is
+## 1. What this needs to do
 
-A signer fetches an HTTP API response, checks it, converts the values it cares
-about into EVM words, and signs those words. Anyone can verify the signature
-on any EVM chain with `ecrecover` alone.
+1. A Rust binary that signs and timestamps an HTTP API response, verifiable on
+   an EVM chain, chain agnostic.
+2. No JSON decoding on chain. The binary transforms the response into signed
+   EVM words, integrity-checks it first, and refuses to sign anything it does
+   not recognise.
+3. The API is Alpaca stock pricing.
+4. A contract accepts a list of signed values and compares them numerically on
+   chain. Byte equality between signers is not required.
+5. No aggregation. A consumer may take any of the signed values and accept it
+   if the others agree within a deviation, given a required number of signed
+   values. The deviation and the count are set by the mint admin, not
+   predetermined here.
+6. Operators do not coordinate at runtime. The party doing the minting is the
+   coordinator: it requests from each operator separately and assembles the
+   bundle it submits.
+7. The operators form a pool of N with a threshold of M, where M is less than
+   N, so one operator being down does not stop minting. Ten operators with a
+   threshold of three is an illustrative shape. All operators in the pool must
+   be equally difficult to compromise. Operators may be added purely for
+   availability redundancy, and the minter does not have to contact all of
+   them.
+8. One operator is the **lead** and its attestation is mandatory. The lead is
+   the entity legally issuing the tokens. The other operators are not legally
+   responsible for the issuance; they are redundancy against the lead being
+   compromised, and do not substitute for it.
+9. To reach the signing threshold, an attacker must compromise the signatory
+   that requests the attestations and performs the mint, **and** the lead,
+   **and** at least M of the pool operators.
+10. Values are carried as Rain Floats. The leaky bucket converts from Rain
+    fixed point to Rain Floats; two storage slots is acceptable.
+11. Zero values are rejected. The leaky bucket library already rejects them.
 
-**Signers do not coordinate at runtime.** They do not talk to each other, share
-state, run a consensus round, elect a leader, agree a nonce, or aggregate
-anything. No shared secret, no ceremony, no threshold scheme. Each independently
-answers a request and returns a standalone signature over its own words, and
-nothing about verification requires two signers to have produced identical
-bytes.
+## 2. Decisions not yet made
 
-**The party doing the minting is the coordinator.** It requests an attestation
-from each operator separately and assembles the bundle it submits. An operator
-therefore needs no peer networking, no shared state, no knowledge of who else
-was asked, and no liveness dependency on any other operator. An attestor is a
-stateless request-response service that signs what it observes and returns.
+Each of these was silently decided in an earlier draft and presented as a
+requirement. None of them has been chosen.
 
-Operators being a known roster is orthogonal to this. Knowing of each other for
-redundancy planning is not runtime coordination, and it does not make the
-system decentralised in any stronger sense — see 2.1.
+1. **Signature framing.** EIP-191 or EIP-712 with a name-and-version-only
+   domain. An earlier draft banned EIP-712 on the grounds that its domain binds
+   `chainId` — but `st0x.price-publisher` already uses EIP-712 chain-agnostically
+   by omitting `chainId` and `verifyingContract`, so the ban was wrong and the
+   choice is open. Either satisfies requirement 1.
+2. **What the preimage commits to.** An earlier draft invented five envelope
+   words: a version tag, a profile tag, a hash of the request URL, the signer's
+   clock, and a hash of the raw response body. Each is a separate decision, and
+   none was asked for.
+3. **Whether to commit the raw body at all.** It makes a dishonest extraction
+   demonstrable off chain and costs one word. It has no on-chain consumer.
+4. **Compatibility with `SignedContextV1`.** `st0x-oracle-server` already signs
+   `keccak256` over packed `bytes32` under EIP-191, verified by Rain's
+   `LibContext`. A format that is not a `SignedContextV1` cannot be read by
+   existing Rainlang strategies.
+5. **Which Alpaca endpoint.** Closed historical bars, latest trade, or latest
+   quote. This determines whether two operators can agree at all.
+6. **Which query parameters are pinned, and to what.** `feed`, `asof`,
+   `adjustment`, `timeframe`. Section 5 of `ALPACA.md` records what each one
+   does and why it matters; which values to pin is not decided.
+7. **Settlement delay.** How old an observation must be before it is signed.
+   Alpaca documents no finalisation guarantee, so this has no documented basis
+   and must be measured.
+8. **What the binary rejects.** An earlier draft proposed nine checks. Which of
+   them are wanted is a decision.
+9. **Signature malleability handling.** Whether the verifier enforces low-`s`
+   and `v` in `{27, 28}`, or delegates to OpenZeppelin's `ECDSA`.
+10. **Output format of the binary.**
 
-Deciding how many attestations to believe, and on what basis, belongs to the
-consuming contract and is out of scope here.
-
-## 2. What it proves, and what it does not
-
-An attestation proves exactly one thing: **the holder of private key `k`
-asserts that at unix time `T` the URL `U` returned a body from which these
-values follow.**
-
-It does not prove:
-
-- that the API actually said it. TLS authenticates the server to the client
-  and produces nothing transferable to a third party. A signer that wants to
-  lie can lie.
-- that `T` is the real time. `T` is the signer's clock, self-reported. See
-  section 8.
-- that the signer's extraction from the body was honest. Word `w4` (section 4)
-  makes a dishonest extraction *demonstrable after the fact*, off chain, by
-  anyone holding the raw body. It does not prevent it.
-
-### 2.1 The property that matters is independence, not decentralisation
-
-Requiring several attestations is not a decentralisation measure and does not
-need an open or permissionless signer set. The property being bought is that
-**no single compromise yields a valid mint**, and it is bought by the signers
-being operated by organisations whose keys are not reachable from one another's
-infrastructure.
-
-A small, known, allowlisted set of contracted operators satisfies this. An open
-set of strangers does not satisfy it any better, and is harder to entitle,
-contract and audit.
-
-### 2.1.1 The signer set
-
-The operators form a pool of N with a threshold of M, where M is less than N.
-Requiring every operator to sign would mean one operator being down stops
-minting. Ten operators with a threshold of three is an illustrative shape.
-
-All operators in the pool MUST be equally difficult to compromise.
-
-Operators MAY be added purely for availability redundancy. The minter does not
-have to contact all of them.
-
-One operator is the **lead**, and its attestation is mandatory. The lead is the
-entity legally issuing the tokens being minted. The other operators are not
-legally responsible for the issuance; they provide redundancy against the lead
-being compromised, and do not substitute for it.
-
-### 2.1.2 What an attacker must compromise
-
-To reach the signing threshold and raise the effective mint cap, an attacker
-must compromise all of:
-
-1. The signatory that requests the attestations and performs the mint.
-2. The lead, which is the issuer's signer on the price feeds.
-3. At least M of the pool operators.
-
-## 3. Cryptographic primitives
+## 3. Proposal: cryptographic primitives
 
 | Purpose | Primitive | Why |
 | --- | --- | --- |
@@ -103,7 +94,7 @@ EIP-712 MUST NOT be used. Its domain separator binds `chainId` and
 is used instead, which also prevents a signature being replayed as an Ethereum
 transaction.
 
-## 4. Word layout
+## 4. Proposal: word layout
 
 Every signed field is exactly one 32-byte word. Nothing variable-length ever
 crosses into the preimage. Because every type is a static 32-byte type,
@@ -172,7 +163,7 @@ signers. Two signers fetching the same logical observation will differ in
 whitespace, key order, or an embedded server timestamp. Consumers MUST NOT
 require `BODY_HASH` to agree across a quorum.
 
-## 5. Signature encoding
+## 5. Proposal: signature encoding
 
 65 bytes, `r ‖ s ‖ v`, with `r` and `s` 32 bytes big-endian and `v` one byte.
 
@@ -188,7 +179,7 @@ quorum that deduplicates on the signature bytes rather than the recovered
 address can be satisfied by one party. Verifiers MUST also reject a recovered
 address of `address(0)`.
 
-## 6. Transforming values into words
+## 6. Proposal: transforming values into words
 
 ### 6.1 The rule
 
@@ -285,7 +276,7 @@ zeros — Go's `RFC3339Nano` does — so the same field can arrive with nine
 digits, with eight, or with no decimal point at all. A parser MUST normalise by
 right-padding to the declared unit rather than by slicing at a fixed offset.
 
-## 7. Determinism and convergence
+## 7. Proposal: determinism and convergence
 
 Uncoordinated signers can only form a quorum if they independently produce
 identical value words. Two rules make that possible.
@@ -329,22 +320,13 @@ identifier. Where the upstream data can still be revised after publication, the
 profile MUST declare a settlement delay and MUST require signers to observe
 only intervals older than it.
 
-### 7.3 Agreement is the consumer's
-
-This specification defines no aggregation and does not require one. A consumer
-may take any of the signed values and accept it if the others agree within a
-deviation it chooses, given a required number of signed values.
-
-What that deviation is, and how many values are required, is set by the
-consumer — for a mint, by the mint admin — and is not predetermined here.
-
-## 8. On the timestamp
+## 8. Proposal: the timestamp
 
 `SIGNED_AT` is a claim, enforced only by the consuming contract comparing it to
 `block.timestamp` at submission and rejecting anything staler than its own
 freshness window.
 
-## 9. The gate
+## 9. Proposal: the gate
 
 All of the following MUST pass, in order, before a single byte is signed. Every
 failure is terminal.
@@ -387,7 +369,7 @@ A retry is not a repair. It is a new observation, with a new body and a new
 timestamp, and it MUST re-enter the gate at step 1 or not happen at all.
 Implementations MUST NOT merge, average or fall back across attempts.
 
-## 10. Key handling
+## 10. Proposal: key handling
 
 The private key MUST be read from an environment variable or standard input.
 It MUST NOT be accepted as a command line argument, where it lands in the
@@ -395,7 +377,7 @@ process table and the shell history. Credentials for the upstream API MUST be
 sent as headers, MUST NOT appear in the URL — which is committed to in `w2` and
 published — and MUST NOT be logged, including in the stderr body dump of 9.1.
 
-## 11. Verification
+## 11. Proposal: verification
 
 The happy path parses nothing and touches no storage.
 
@@ -434,7 +416,7 @@ function attestor(
 and no ambiguity. Adding any dynamically sized member to the preimage would
 break that and would be a change of envelope.
 
-## 13. Output format
+## 12. Proposal: output format
 
 One JSON object on stdout, one line, on success:
 

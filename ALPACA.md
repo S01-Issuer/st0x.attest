@@ -11,7 +11,15 @@ words apply. Everything asserted about Alpaca here is transcribed from the
 OpenAPI source served by appending `.md` to a docs URL; anything the docs do
 not settle is in section 9 as an open question rather than invented.
 
-## 1. Why bars and not trades
+## Status
+
+**Nothing here is decided.** Sections 3, 4, 6, 7, 9 and 10 are facts about
+the Alpaca API, transcribed from its OpenAPI source and cited. Sections 1, 2,
+5 and 8 are proposals — an endpoint, a set of pinned parameters, a settlement
+delay and a word layout — none of which has been chosen. Section 9 lists what
+the Alpaca documentation does not settle and what must be measured.
+
+## 1. Proposal: bars rather than trades
 
 `SPEC.md` §7.2 requires an observation fixed by its URL. `/trades/latest` and
 `/quotes/latest` are functions of when you call them, so two uncoordinated
@@ -29,7 +37,7 @@ a signer cannot honestly claim to know what it is signing.
 A closed historical minute bar has neither problem. Its aggregation rules are
 fully documented, and it is addressed by its URL.
 
-## 2. Request
+## 2. Proposal: the request
 
 ### 2.1 Endpoint
 
@@ -98,7 +106,7 @@ APCA-API-SECRET-KEY: <secret>
 Note the spelling: `APCA-API-SECRET-KEY`, not `APCA-SECRET-KEY`. Per `SPEC.md`
 §10 these are headers, are never in the URL, and are never logged.
 
-## 3. The feed changes the values, and its default is subscription-dependent
+## 3. Fact: the feed changes the values, and its default is subscription-dependent
 
 **Different Alpaca subscription tiers return different prices for the same
 symbol and the same minute.** This is not a subtlety, it is documented with a
@@ -138,7 +146,7 @@ before any transform runs. Strict decoding is what rejects it; without
 Note also that without a subscription, SIP data can only be queried when `end`
 is at least 15 minutes old. This interacts with the settlement delay in §5.
 
-## 4. Response
+## 4. Fact: the response schema
 
 ### 4.1 Shape
 
@@ -209,7 +217,7 @@ values. The docs are explicit that VWAP's volume denominator "can be different
 from the 'normal' volume field of the bar", so `vw` is not reconstructible from
 the other fields. It is an independent observation and is signed as one.
 
-## 5. Settlement delay
+## 5. Proposal: settlement delay
 
 `{T}` MUST be at least `SETTLEMENT_DELAY` seconds before the signer's clock.
 `SETTLEMENT_DELAY` is a required deployment parameter with no default.
@@ -236,7 +244,7 @@ Note the interaction with §3: without a SIP subscription, `end` must already be
 at least 15 minutes old, so `SETTLEMENT_DELAY` below 900 is unreachable for
 those signers regardless.
 
-## 6. Timestamp parsing
+## 6. Fact: timestamp format
 
 Alpaca returns RFC 3339 with a **variable-length** fractional-seconds
 component, always UTC. Real documented values:
@@ -269,7 +277,7 @@ For this profile `bars[0].t` is additionally required to be exactly on a minute
 boundary — unix seconds MUST be an exact multiple of `60` — because a
 one-minute bar's left edge always is.
 
-## 7. Numbers
+## 7. Fact: number encoding
 
 Alpaca returns prices as JSON **numbers**, never strings: `"c": 178.21`,
 `"p": 172.6`, `"vw": 178.235733`. Sizes, volumes and counts are JSON integers.
@@ -302,7 +310,7 @@ Implementations MUST NOT normalise the parsed Float to a target exponent.
 Agreement between signers is numeric, per `SPEC.md` §7.1, so the exact
 encoding does not need to match and forcing one would truncate.
 
-## 8. Value words
+## 8. Proposal: value words
 
 `PROFILE = keccak256("alpaca.bar.1min.v1")`, and `w5..w13` are:
 
@@ -382,7 +390,7 @@ checks fail closed if the inference is wrong, so a mistake here costs
 availability rather than correctness — but it must be confirmed before
 deployment, not discovered in production.
 
-## 10. Operational notes
+## 10. Fact: rate limits
 
 Rate limits are 200 requests per minute on the free Basic plan and 10,000 on
 Algo Trader Plus. Responses carry `X-RateLimit-Limit`,
