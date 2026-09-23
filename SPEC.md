@@ -25,7 +25,8 @@ The requirements as stated.
    logic is, and which oracle things come from do not have to be predetermined,
    because the mint admin sets them in the Rainlang itself.
 7. A Rainlang subparser is included, so that expressions do not have to use
-   awkward signed context positions.
+   awkward signed context positions. It specifies `lead`, `attestor` and
+   `lead-price` as words.
 8. Two words are added to Rainlang, because the `ensure` forms are awkward
    without them.
    - `in`, so an expression can say that a signer is in a list. The operand
@@ -44,8 +45,9 @@ The requirements as stated.
 
 How the example in item 5 would look written out, using the subparser from item
 7 and the words from items 8 and 9. It is one expression a mint admin could
-write, not the required check. The subparser word names below are
-illustrative; they are not decided.
+write, not the required check. `lead`, `attestor` and `lead-price` are
+the words from item 7; `attested-price` and `mint-amount` are illustrative and
+not decided.
 
 ```rainlang
 #lead-signer !The mandatory lead signer, S01 as issuer.
@@ -60,9 +62,9 @@ illustrative; they are not decided.
 #weighting
 using-words-from st0x-attest-subparser
 
-/* The lead is mandatory. Attestation 0 must come from the issuer's signer. */
+/* The lead is mandatory. */
 :ensure(
-  equal-to(attestor<0>() lead-signer)
+  equal-to(lead() lead-signer)
   "Lead attestation missing"
 ),
 
@@ -70,7 +72,7 @@ using-words-from st0x-attest-subparser
  * mint collects two, so any four operators can be down without stopping it. */
 :ensure(
   in<2>(
-    attestor<1>() attestor<2>()
+    attestor<0>() attestor<1>()
     operator-1 operator-2 operator-3 operator-4 operator-5 operator-6
   )
   "Attestor not an allowlisted operator"
@@ -78,24 +80,19 @@ using-words-from st0x-attest-subparser
 
 /* No operator fills more than one seat, the lead included. */
 :ensure(
-  unique(attestor<0>() attestor<1>() attestor<2>())
+  unique(lead() attestor<0>() attestor<1>())
   "Same operator twice"
 ),
 
-/* The price each of them attested, by name rather than by position. */
-lead-price: attested-price<0>(),
-price-1: attested-price<1>(),
-price-2: attested-price<2>(),
-
 /* Highest and lowest no more than max-deviation apart. */
 :ensure(
-  agree(max-deviation lead-price price-1 price-2)
+  agree(max-deviation lead-price() attested-price<0>() attested-price<1>())
   "Attestors disagree"
 ),
 
 /* Any of the values may be taken once they agree. This takes the lead's and
  * weights the requested mint amount by it. */
-weighting: mul(mint-amount() lead-price);
+weighting: mul(mint-amount() lead-price());
 ```
 
 ## 3. The operators
