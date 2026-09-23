@@ -132,7 +132,8 @@ A signer lacking entitlement receives an error body of the shape
 `{"code":42210000,"message":"subscription does not permit querying recent SIP data"}`.
 This requires no special handling: it does not match the expected response
 struct, so the `deny_unknown_fields` decode in `SPEC.md` §9 step 5 rejects it
-before any transform runs. Strict decoding is load-bearing here, not hygiene.
+before any transform runs. Strict decoding is what rejects it; without
+`deny_unknown_fields` the error body would reach the transform stage.
 
 Note also that without a subscription, SIP data can only be queried when `end`
 is at least 15 minutes old. This interacts with the settlement delay in §5.
