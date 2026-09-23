@@ -11,10 +11,32 @@ A signer fetches an HTTP API response, checks it, converts the values it cares
 about into EVM words, and signs those words. Anyone can verify the signature
 on any EVM chain with `ecrecover` alone.
 
-There is no coordination between signers. No registry, no ceremony, no shared
-secret, no threshold scheme, no aggregation. Each signer emits a standalone
-signature. Forming a quorum out of several signatures is entirely the consuming
-contract's problem, and is out of scope here.
+**Signers do not coordinate at runtime.** They do not talk to each other, share
+state, run a consensus round, elect a leader, agree a nonce, or aggregate
+anything. No shared secret, no ceremony, no threshold scheme. Each independently
+answers a request and returns a standalone signature over its own words, and
+nothing about verification requires two signers to have produced identical
+bytes.
+
+**The party doing the minting is the coordinator.** It requests an attestation
+from each operator separately and assembles the bundle it submits. An operator
+therefore needs no peer networking, no shared state, no knowledge of who else
+was asked, and no liveness dependency on any other operator. An attestor is a
+stateless request-response service that signs what it observes and returns.
+
+Operators being a known roster is orthogonal to this. Knowing of each other for
+redundancy planning is not runtime coordination, and it does not make the
+system decentralised in any stronger sense — see 2.1.
+
+Two consequences follow from the minter being the assembler. Availability risk
+concentrates there: if an operator cannot be reached, the minter cannot meet a
+required minimum and the mint fails, so the minimum is a liveness budget as
+much as a security one. And because the minter chooses which attestations to
+include, it also chooses which value serves as the reference in any tolerance
+check — see 7.4.
+
+Deciding how many attestations to believe, and on what basis, belongs to the
+consuming contract and is out of scope here.
 
 ## 2. What it proves, and what it does not
 
@@ -26,16 +48,58 @@ It does not prove:
 
 - that the API actually said it. TLS authenticates the server to the client
   and produces nothing transferable to a third party. A signer that wants to
-  lie can lie. Defence against this is N uncoordinated signers, which is a
-  social guarantee, not a cryptographic one.
+  lie can lie.
 - that `T` is the real time. `T` is the signer's clock, self-reported. See
   section 8.
 - that the signer's extraction from the body was honest. Word `w4` (section 4)
   makes a dishonest extraction *demonstrable after the fact*, off chain, by
   anyone holding the raw body. It does not prevent it.
 
-Anyone deploying this MUST understand that the trust model is "N independent
-parties, each individually untrusted" and size the quorum accordingly.
+### 2.1 The property that matters is independence, not decentralisation
+
+Requiring several attestations is not a decentralisation measure and does not
+need an open or permissionless signer set. The property being bought is that
+**no single compromise yields a valid mint**, and it is bought by the signers
+being operated by organisations whose keys are not reachable from one another's
+infrastructure.
+
+A small, known, allowlisted set of contracted operators satisfies this. An open
+set of strangers does not satisfy it any better, and is harder to entitle,
+contract and audit.
+
+The signer set therefore SHOULD live in contract storage that the consuming
+policy reads, rather than as constants inlined in expression bytecode, so that
+who is trusted stays legible on chain and changing it is an observable event.
+
+### 2.2 What co-signing does and does not contain
+
+Consider an attacker holding both the right to mint and the primary attestor's
+key — the realistic correlated compromise of one operator.
+
+- They are stopped **only** because the policy requires a minimum number of
+  distinct allowlisted attestors and they cannot produce the second signature.
+  A policy that accepts one attestation gains nothing from the others existing.
+- If that minimum is met dishonestly, they can still mint up to the rate
+  limit's remaining headroom at an honest price. **The rate limit, not the
+  attestor set, is the loss bound.**
+- Co-signers bound how far the *price* can be misstated, to roughly the
+  agreement tolerance. They do not bound *quantity* at all.
+
+Those are orthogonal defences and a deployment needs both. Consumers MUST
+enforce a minimum count of distinct recovered addresses; see 7.3 step 4.
+
+### 2.3 Corroboration need not match the primary in provenance
+
+A co-signer exists to confirm that the primary's value is not far wrong. It
+does not have to observe through the same data source, provided the difference
+between sources stays inside the agreement tolerance for the fields being
+checked.
+
+This matters because the primary's data entitlement is often the expensive
+part. A profile MAY allow co-signers a cheaper or more restricted source, and
+MUST then state which value words are comparable across sources and which are
+not. See `ALPACA.md` §3.1 for a worked example where prices corroborate within
+0.07% across feeds while volume differs by 98%.
 
 ## 3. Cryptographic primitives
 
@@ -292,12 +356,19 @@ byte-identical — each signature covers that signer's own words.
    and `URL_HASH` to match whatever the consumer pins.
 3. Require each `SIGNED_AT` to be within the consumer's freshness window of
    `block.timestamp`.
-4. **Deduplicate on the recovered address.** A signer can legitimately produce
-   two valid signatures over the same value under two different Float
-   encodings, and both would pass a numeric agreement check. A consumer that
-   deduplicates on words, on `inner`, or on signature bytes can therefore have
-   one party fill several seats of an M-of-N. Deduplicating on the recovered
-   address is the only sound rule and is REQUIRED.
+4. **Deduplicate on the recovered address, check it against the allowlist, and
+   require a minimum count.** All three are REQUIRED.
+   - A signer can legitimately produce two valid signatures over the same
+     value under two different Float encodings, and both would pass a numeric
+     agreement check. A consumer deduplicating on words, on `inner`, or on
+     signature bytes can therefore let one party fill several seats.
+     Deduplicating on the recovered address is the only sound rule.
+   - The recovered address MUST be checked against the allowlisted operator
+     set. Recovery alone proves a key signed, not that anyone trusts it.
+   - The count of distinct allowlisted addresses MUST meet a configured
+     minimum, and that minimum MUST be greater than one wherever the point of
+     the exercise is surviving a single operator's compromise. This is the
+     step that does the work; see 2.2.
 5. Decide whether the surviving attestations agree. **How is out of scope for
    this specification** — see 7.4.
 

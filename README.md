@@ -8,9 +8,18 @@ with `ecrecover` and gets Rain Floats it can do arithmetic on. No JSON is parsed
 on chain, no strings cross the boundary, and nothing in the signed preimage
 names a chain.
 
-Uncoordinated parties can each run this without talking to each other. There is
-no registry, no ceremony, no shared secret and no threshold scheme. Every signer
-emits a standalone signature.
+Operators do not coordinate at runtime — no peer networking, no shared state,
+no consensus round, no shared secret, no threshold scheme. Each answers a
+request independently and returns a standalone signature. The party doing the
+minting is the coordinator: it asks each operator separately and assembles the
+bundle it submits.
+
+Requiring several signatures buys one thing: **no single compromise yields a
+valid mint.** That needs operators whose keys aren't reachable from one
+another's infrastructure, which a small allowlisted set of contracted
+organisations satisfies. It does not need an open or permissionless signer set,
+and a rate limit — not the signer set — is what bounds the loss if the minimum
+is met dishonestly. See `SPEC.md` §2.1 and §2.2.
 
 **Deciding whether those signatures agree is deliberately not part of this
 format.** There is no median, no mean, no unanimity rule and no required
