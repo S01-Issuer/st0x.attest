@@ -25,6 +25,62 @@ The requirements as stated.
    logic is, and which oracle things come from do not have to be predetermined,
    because the mint admin sets them in the Rainlang itself.
 
+### Example rendering of the item 5 expression
+
+How the example in item 5 would look written out. It is one expression a mint
+admin could write, not the required check.
+
+```rainlang
+#lead-signer !The mandatory lead signer, S01 as issuer.
+#operator-1 !An allowlisted pool operator.
+#operator-2 !An allowlisted pool operator.
+#max-deviation !Fractional deviation a pool value may have from the lead. 0.01 is 1%.
+
+#weighting
+using-words-from raindex-subparser
+
+/* The lead is mandatory. Signed context 0 must be the issuer's signer. */
+:ensure(
+  equal-to(signer<0>() lead-signer)
+  "Lead attestation missing"
+),
+
+/* Pool operators. This example collects M = 2 from the allowlist. */
+:ensure(
+  any(equal-to(signer<1>() operator-1) equal-to(signer<1>() operator-2))
+  "Signer 1 not an allowlisted operator"
+),
+:ensure(
+  any(equal-to(signer<2>() operator-1) equal-to(signer<2>() operator-2))
+  "Signer 2 not an allowlisted operator"
+),
+:ensure(
+  is-zero(equal-to(signer<1>() signer<2>()))
+  "Same operator twice"
+),
+
+/* The price each of them signed. */
+lead-price: signed-context<0 0>(),
+price-1: signed-context<1 0>(),
+price-2: signed-context<2 0>(),
+
+/* Every pool value must be within max-deviation of the lead's. */
+tolerance: mul(lead-price max-deviation),
+:ensure(
+  less-than-or-equal-to(abs(sub(price-1 lead-price)) tolerance)
+  "Operator 1 disagrees with lead"
+),
+:ensure(
+  less-than-or-equal-to(abs(sub(price-2 lead-price)) tolerance)
+  "Operator 2 disagrees with lead"
+),
+
+/* Any of the values may be taken once they agree. This takes the lead's and
+ * weights the requested mint amount by it. Which context slot carries the
+ * requested amount is not decided. */
+weighting: mul(context<0 0>() lead-price);
+```
+
 ## 3. The operators
 
 7. The parties are uncoordinated in that they do not coordinate requests
