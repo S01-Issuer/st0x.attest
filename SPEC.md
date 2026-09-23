@@ -74,7 +74,7 @@ The requirements as stated.
 19. Signed context moves off the hash library and onto EIP-712 signed data,
     and the hash library is removed. This is in scope alongside the word
     changes above, since both modify Rainlang.
-    `rainlanguage/rain.interpreter.interface` #133 already tracks it:
+    `rainlanguage/rainlang.interface` #133 already tracks it:
     `SignedContextV2` with a caller-chosen domain and `hashStruct` over the
     context words, replacing `personal_sign` over
     `LibHashNoAlloc.hashWords`.
