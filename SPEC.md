@@ -1,6 +1,6 @@
-# rain.attest core specification
+# st0x.attest core specification
 
-Version `rain.attest.v1`.
+Version `st0x.attest.v1`.
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are to be interpreted
 as in RFC 2119.
@@ -63,7 +63,7 @@ crosses into the preimage. Because every type is a static 32-byte type,
 on either side.
 
 ```
-w0     ENVELOPE     keccak256("rain.attest.v1")
+w0     ENVELOPE     keccak256("st0x.attest.v1")
 w1     PROFILE      keccak256(<profile id string>)
 w2     URL_HASH     keccak256(request URL bytes, including query string)
 w3     SIGNED_AT    uint256, unix seconds, signer's clock
@@ -148,17 +148,28 @@ Each extracted field MUST map into exactly one 32-byte word, and the mapping
 MUST be total and injective. Two distinct field values MUST NOT produce the
 same word.
 
+Envelope words `w0..w4` are raw `bytes32` and `uint256`, because they are
+consumed by the verifier contract itself rather than by on-chain math. Profile
+value words `w5..wN` carry numbers as **Rain Floats**, matching what Rainlang
+strategies and the rest of the ST0x oracle stack already read.
+
 | Source | Word |
 | --- | --- |
-| Decimal number | scaled `uint256`, section 6.3 |
-| Integer | `uint256`, range-checked |
-| Boolean | 0 or 1 |
-| Enumerated string | `uint256` via a closed match; unknown variant aborts |
+| Decimal number | Rain Float, section 6.3 |
+| Integer | Rain Float with exponent 0, range-checked |
+| Boolean | Rain Float 0 or 1 |
+| Enumerated string | Rain Float via a closed match; unknown variant aborts |
 | Free string | `keccak256` of its bytes, so length never matters |
 | Hex address | `address`, checksum verified when the source is checksummed |
-| RFC 3339 timestamp | `uint256` in a profile-declared unit, section 6.4 |
+| RFC 3339 timestamp | Rain Float, whole unix seconds, section 6.4 |
 
 A free string MUST NOT be truncated or padded into a `bytes32`. Hash it.
+
+A Rain Float is `bytes32`: a signed `int32` exponent in the high 32 bits and a
+signed `int224` coefficient in the low 224 bits, with value
+`coefficient × 10^exponent`. Representations are non-canonical by design —
+`(5, 0)`, `(50, -1)` and `(5000, -3)` all equal 5 and pack differently — which
+section 7 addresses by comparing numerically rather than by byte.
 
 ### 6.2 No floating point, anywhere
 
@@ -172,38 +183,53 @@ from byte-identical input, a quorum that silently never forms, and a fault that
 looks like a networking problem.
 
 Implementations MUST obtain the raw digit string — `serde_json`'s
-`arbitrary_precision` feature, or equivalent — and convert it as in 6.3.
+`arbitrary_precision` or `raw_value` feature, or equivalent — and convert it as
+in 6.3.
 
-### 6.3 Decimal to scaled integer
+The numeric comparison in section 7 does not relax this rule. Comparing Floats
+numerically absorbs *representation* divergence: two signers encoding the same
+number as `(5, 0)` and `(50, -1)` still agree. It does nothing about *value*
+divergence: two signers whose float paths produced genuinely different numbers
+compare unequal and the quorum correctly fails to form. A helper that routes a
+JSON number through `f64` before parsing produces the second kind, and no
+amount of on-chain comparison recovers it.
 
-Given source string `s` and a profile-declared `SCALE`:
+### 6.3 Decimal to Rain Float
 
-1. `s` MUST match `^(0|[1-9][0-9]*)(\.[0-9]+)?$`. This rejects a leading `+`,
-   leading zeros, a bare trailing `.`, and exponent notation. Negative values
-   are rejected in v1; a profile needing them MUST declare a signed variant and
-   a new envelope.
-2. Split at `.` into `int_part` and `frac_part`, with `frac_part` empty when
-   there is no `.`.
-3. If `len(frac_part) > SCALE`, **abort**. MUST NOT truncate or round. Silent
-   precision loss is a signed falsehood.
-4. Right-pad `frac_part` with `0` to exactly `SCALE` characters.
-5. Concatenate `int_part ‖ padded_frac` and parse base-10 into `uint256` with
-   overflow checking. On overflow, abort.
+Given source string `s`, taken verbatim from the wire per 6.2:
 
-Trailing zeros in the source are accepted and are not a divergence risk, since
-`181.18` and `181.180` scale to the same integer.
+1. `s` MUST match `^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`. This rejects a leading `+`,
+   leading zeros, a bare trailing `.`, and exponent notation.
+2. Parse `s` into a Rain Float by exact decimal arithmetic. The 224-bit signed
+   coefficient carries roughly 67 significant digits, so any precision an HTTP
+   API realistically emits is represented exactly.
+3. If the value does not fit the coefficient or exponent range, **abort**.
+   MUST NOT truncate or round. Silent precision loss is a signed falsehood.
+
+Implementations MUST NOT force the result to a target exponent.
+`withTargetExponent` truncates when it shrinks a coefficient, so
+canonicalising by pinning an exponent reintroduces exactly the precision loss
+step 3 forbids. Whatever representation exact parsing produces is the
+representation that gets signed, and section 7 makes that safe.
+
+Trailing zeros in the source are accepted. `181.18` and `181.180` may encode to
+different `bytes32`, and that is not a divergence risk because agreement is
+numeric — see 7.1.
 
 Exponent notation is legal JSON and is rejected deliberately. An API that
 begins emitting `1.8118e2` MUST break the signer loudly rather than be
-mis-scaled quietly.
+mis-parsed quietly.
 
 ### 6.4 Timestamps in values
 
-A profile that signs a timestamp from the response body MUST declare its unit
-(seconds, milliseconds, microseconds or nanoseconds since the unix epoch) and
-MUST require the `Z` suffix, rejecting numeric UTC offsets, so that two signers
-cannot disagree about the same instant. Sub-unit precision beyond the declared
-unit MUST abort rather than truncate, per 6.3 step 3.
+A timestamp signed from the response body is a Rain Float carrying **whole
+unix seconds**, matching every signed timestamp in the ST0x oracle stack so
+that a consumer never has to reconcile units across sources.
+
+The parser MUST require the `Z` suffix and reject numeric UTC offsets, so that
+two signers cannot disagree about the same instant. Sub-second precision MUST
+abort rather than truncate, per 6.3 step 3. A profile whose observations do not
+land on whole seconds MUST say so and declare its own unit explicitly.
 
 Profiles MUST NOT assume the fractional-seconds component is fixed width, and
 MUST accept its complete absence. RFC 3339 emitters commonly trim trailing
@@ -219,12 +245,25 @@ identical value words. Two rules make that possible.
 ### 7.1 The value words MUST be a pure function of the raw body
 
 `w5..wN` MUST depend on nothing but the response bytes and the profile. No
-local clock, no locale, no environment, no floating point, no library-version-
-dependent behaviour, no retry state. Two conforming signers handed the same
-body MUST produce identical value words.
+local clock, no locale, no environment, no IEEE-754, no retry state. Two
+conforming signers handed the same body MUST produce **numerically equal**
+values.
 
-`SIGNED_AT`, `BODY_HASH` and the signature are the only parts that legitimately
-differ between signers observing the same thing.
+Numerically equal, not byte-identical. Signers are uncoordinated, so they may
+run different builds pinned to different Rain Float library versions, and two
+such builds may encode the same number under different `(coefficient,
+exponent)` pairs. Requiring byte equality would make the quorum brittle against
+version skew that no participant can observe or control. Consumers therefore
+compare with `LibDecimalFloat.eq`, which rescales before comparing.
+
+That comparison is exact. `compareRescale` grows the larger-exponent
+coefficient rather than shrinking the smaller one, so it truncates nothing; it
+detects overflow and saturates to unequal; exponent gaps beyond 76 saturate
+likewise; and it skips rescaling altogether when the exponents already match,
+which is the common case.
+
+`SIGNED_AT`, `BODY_HASH`, the exact Float encodings and the signature are the
+parts that legitimately differ between signers observing the same thing.
 
 ### 7.2 A profile MUST target a URL-addressed, immutable observation
 
@@ -242,11 +281,30 @@ identifier. Where the upstream data can still be revised after publication, the
 profile MUST declare a settlement delay and MUST require signers to observe
 only intervals older than it.
 
-Consumers form a quorum over matching `(PROFILE, URL_HASH, w5..wN)` from M
-distinct recovered addresses, each with an acceptable `SIGNED_AT`. Where the
-underlying quantity is continuous and exact agreement is not achievable, a
-consumer MAY instead take a median over a value word across distinct signers;
-profiles SHOULD state which model they are built for.
+### 7.3 Forming a quorum
+
+A consumer takes a list of attestations, recovers each independently, and then
+decides whether they agree. Nothing about verification requires them to be
+byte-identical — each signature covers that signer's own words.
+
+1. Recover each attestation per section 11. Reject any that fails.
+2. Require `ENVELOPE` and `PROFILE` to match the expected constants by byte,
+   and `URL_HASH` to match whatever the consumer pins.
+3. Require each `SIGNED_AT` to be within the consumer's freshness window of
+   `block.timestamp`.
+4. **Deduplicate on the recovered address.** A signer can legitimately produce
+   two valid signatures over the same value under two different Float
+   encodings, and both would pass a numeric agreement check. A consumer that
+   deduplicates on words, on `inner`, or on signature bytes can therefore have
+   one party fill several seats of an M-of-N. Deduplicating on the recovered
+   address is the only sound rule and is REQUIRED.
+5. Compare value words with `LibDecimalFloat.eq`, never with `==`, and require
+   M distinct addresses to agree.
+
+Where the underlying quantity is continuous and exact agreement is not
+achievable, a consumer MAY instead take a median across distinct signers. A
+median needs numeric ordering regardless, so it costs nothing extra over the
+equality path. Profiles SHOULD state which model they are built for.
 
 ## 8. On the timestamp
 
@@ -322,7 +380,7 @@ published — and MUST NOT be logged, including in the stderr body dump of 9.1.
 The happy path parses nothing and touches no storage.
 
 ```solidity
-bytes32 constant ENVELOPE = keccak256("rain.attest.v1");
+bytes32 constant ENVELOPE = keccak256("st0x.attest.v1");
 bytes32 constant HALF_N =
     0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0;
 
@@ -373,7 +431,7 @@ One JSON object on stdout, one line, on success:
 
 ```json
 {
-  "envelope": "rain.attest.v1",
+  "envelope": "st0x.attest.v1",
   "profile": "<profile id string>",
   "url": "<full request URL>",
   "signedAt": 1758585600,

@@ -251,14 +251,16 @@ Parsers MUST therefore:
 2. Reject a numeric UTC offset. Alpaca accepts offsets like `-04:00` on
    *input*; output is always `Z`, and accepting anything else on output would
    let two signers disagree about one instant.
-3. Right-pad the fractional digits with `0` to exactly nine, treating an absent
-   fractional part as nine zeros.
-4. Convert to unsigned nanoseconds since the unix epoch by integer arithmetic
+3. Abort if any fractional digit is non-zero. A one-minute bar's left edge is
+   always a whole second, so a fractional component here means the response is
+   not what this profile models. Per `SPEC.md` §6.4 the value is carried as
+   whole unix seconds, and truncating to reach them is forbidden.
+4. Convert to unsigned whole seconds since the unix epoch by integer arithmetic
    only. No floating point, no date library that round-trips through a float.
 
 For this profile `bars[0].t` is additionally required to be exactly on a minute
-boundary — nanoseconds since epoch MUST be an exact multiple of
-`60 000 000 000` — because a one-minute bar's left edge always is.
+boundary — unix seconds MUST be an exact multiple of `60` — because a
+one-minute bar's left edge always is.
 
 ## 7. Numbers
 
@@ -277,10 +279,21 @@ fields range from one to seven significant decimal places — `172.6` (not
 trailing zeros are not preserved. Any rule that assumes a fixed scale on the
 wire is wrong.
 
-`SCALE` for this profile is **18**, matching the conventional EVM fixed-point
-denomination. At that scale the abort in §6.3 step 3 cannot trigger for any
-precision Alpaca has been observed to emit, while still being a hard failure if
-Alpaca ever exceeds it.
+Prices are carried as Rain Floats parsed directly from the wire text per
+`SPEC.md` §6.3. There is no scale to declare: a 224-bit signed coefficient
+holds roughly 67 significant digits, so Alpaca's seven decimal places are
+represented exactly and the abort in §6.3 step 3 cannot trigger for any
+precision Alpaca has been observed to emit.
+
+The parser MUST be handed the raw number token. In Rust that means
+`serde_json`'s `raw_value` feature and `Box<RawValue>`, as `st0x.pricing` does
+at `crates/pricing-service/src/market_data.rs:160-170`, rather than the
+`st0x.finance` float-serde helper, which routes a JSON number through
+`serde_json::Number` to `f64` to ryu before parsing and so violates §6.2.
+
+Implementations MUST NOT normalise the parsed Float to a target exponent.
+Agreement between signers is numeric, per `SPEC.md` §7.1, so the exact
+encoding does not need to match and forcing one would truncate.
 
 ## 8. Value words
 
@@ -289,14 +302,18 @@ Alpaca ever exceeds it.
 | Word | Name | Source | Transform |
 | --- | --- | --- | --- |
 | `w5` | `SYMBOL` | requested symbol | `keccak256` of the uppercase ASCII bytes |
-| `w6` | `BAR_TIME` | `bars[0].t` | `uint256` nanoseconds since epoch, §6 |
-| `w7` | `OPEN` | `bars[0].o` | scaled `uint256`, `SCALE` 18 |
-| `w8` | `HIGH` | `bars[0].h` | scaled `uint256`, `SCALE` 18 |
-| `w9` | `LOW` | `bars[0].l` | scaled `uint256`, `SCALE` 18 |
-| `w10` | `CLOSE` | `bars[0].c` | scaled `uint256`, `SCALE` 18 |
-| `w11` | `VOLUME` | `bars[0].v` | `uint256`, shares |
-| `w12` | `TRADE_COUNT` | `bars[0].n` | `uint256` |
-| `w13` | `VWAP` | `bars[0].vw` | scaled `uint256`, `SCALE` 18 |
+| `w6` | `BAR_TIME` | `bars[0].t` | Rain Float, whole unix seconds, §6 |
+| `w7` | `OPEN` | `bars[0].o` | Rain Float from wire text |
+| `w8` | `HIGH` | `bars[0].h` | Rain Float from wire text |
+| `w9` | `LOW` | `bars[0].l` | Rain Float from wire text |
+| `w10` | `CLOSE` | `bars[0].c` | Rain Float from wire text |
+| `w11` | `VOLUME` | `bars[0].v` | Rain Float, whole shares |
+| `w12` | `TRADE_COUNT` | `bars[0].n` | Rain Float, whole count |
+| `w13` | `VWAP` | `bars[0].vw` | Rain Float from wire text |
+
+A bar's `t` always lands on a minute boundary (§6), so whole unix seconds is
+lossless here and matches the unit every signed timestamp in the ST0x oracle
+stack already uses.
 
 The symbol is hashed rather than packed into a `bytes32`, per `SPEC.md` §6.1,
 so that ticker length is never a constraint and the mapping stays injective.

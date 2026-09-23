@@ -1,4 +1,4 @@
-# rain.attest
+# st0x.attest
 
 Sign and timestamp an HTTP API response so it can be verified on any EVM chain.
 
@@ -24,7 +24,7 @@ Specification only. No implementation yet.
 ## Shape of it
 
 ```
-w0     ENVELOPE     keccak256("rain.attest.v1")
+w0     ENVELOPE     keccak256("st0x.attest.v1")
 w1     PROFILE      keccak256(<profile id>)
 w2     URL_HASH     keccak256(request URL, query string included)
 w3     SIGNED_AT    uint256 unix seconds, signer's clock
