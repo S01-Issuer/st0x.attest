@@ -179,10 +179,11 @@ These concern the mint caps in `st0x.deploy`, not the binary above.
 22. Deploying different algorithms and weightings is then something governance
     handles, without rewriting the smart contract logic.
 23. The leaky bucket logic converts from Rain fixed point to Rain Floats.
-24. Two storage slots is acceptable. Typical mints can be large — an incoming
+24. The leaky bucket itself prevents negative numbers once it is on Floats.
+25. Two storage slots is acceptable. Typical mints can be large — an incoming
     OTC mint requesting $2 million in a single mint — so the gas difference
     between one slot and two is irrelevant.
-25. Zero values are not accepted. The leaky bucket library already rejects
+26. Zero values are not accepted. The leaky bucket library already rejects
     them.
 
 ## Licence
