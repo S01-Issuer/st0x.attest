@@ -183,14 +183,16 @@ These concern the mint caps in `st0x.deploy`, not the binary above.
     address is needed, because the weightings can contribute towards the global
     limit in whatever way is wanted, and the signed context can be provided by
     different attestors.
-23. Deploying different algorithms and weightings is then something governance
+23. The corporate action logic is removed from the mint caps altogether, since
+    the weighting is value-based.
+24. Deploying different algorithms and weightings is then something governance
     handles, without rewriting the smart contract logic.
-24. The leaky bucket logic converts from Rain fixed point to Rain Floats.
-25. The leaky bucket itself prevents negative numbers once it is on Floats.
-26. Two storage slots is acceptable. Typical mints can be large — an incoming
+25. The leaky bucket logic converts from Rain fixed point to Rain Floats.
+26. The leaky bucket itself prevents negative numbers once it is on Floats.
+27. Two storage slots is acceptable. Typical mints can be large — an incoming
     OTC mint requesting $2 million in a single mint — so the gas difference
     between one slot and two is irrelevant.
-27. Zero values are not accepted. The leaky bucket library already rejects
+28. Zero values are not accepted. The leaky bucket library already rejects
     them.
 
 ## Licence
