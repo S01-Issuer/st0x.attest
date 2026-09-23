@@ -82,7 +82,7 @@ illustrative and not decided.
 #operator-5 !An allowlisted pool operator.
 #operator-6 !An allowlisted pool operator.
 #max-deviation !Fractional limit on how far apart the attested values may be. 0.01 is 1%.
-#max-age !Oldest attestation accepted, in seconds.
+#max-time-spread !How far apart the attested times may be, in seconds.
 #min-price !Absolute floor on the attested price.
 #max-price !Absolute ceiling on the attested price.
 
@@ -120,12 +120,11 @@ using-words-from st0x-attest-subparser
   "Attestation is for the wrong token"
 ),
 
-/* The attested times agree with each other and with now, within max-age
- * seconds. Passing now() as one of the values makes the same call bound the
- * age too, since now() is always the highest of them. */
+/* The attested times and the chain clock all fall within max-time-spread of
+ * each other. */
 :ensure(
-  agree-absolute(max-age now() lead-time() attested-time<0>() attested-time<1>())
-  "Attestation too old or times disagree"
+  agree-absolute(max-time-spread now() lead-time() attested-time<0>() attested-time<1>())
+  "Times disagree"
 ),
 
 /* Highest and lowest no more than max-deviation apart. */
