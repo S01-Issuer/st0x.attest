@@ -186,9 +186,11 @@ These concern the mint caps in `st0x.deploy`, not the binary above.
 23. The per-token logic is removed from the orchestrator branch. That branch
     has a per-token limit and no limits for recipients. The per-token limit
     goes, and value-based limits per recipient and per minter take its place.
-    Only those two are needed; the weightings can contribute towards them in
-    whatever way is wanted, and the signed context can be provided by different
-    attestors.
+    The cap and the leak rate are what is set per sender and per recipient;
+    the amount-to-value conversion in item 16 stays global. Only those two
+    dimensions are needed; the weightings can contribute towards them in
+    whatever way is wanted, and the signed context can be provided by
+    different attestors.
 24. The corporate action logic is removed from the orchestrator branch
     altogether, since the weighting is value-based.
 25. Deploying different algorithms and weightings is then something governance
