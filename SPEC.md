@@ -9,10 +9,9 @@ The requirements as stated.
 2. No JSON decoded on chain. The binary transforms the response into signed EVM
    words and integrity-checks it before it signs. It refuses to sign weirdness.
 3. The API is Alpaca stock pricing.
-4. Each attestation carries exactly three values: the symbol, the price and
-   the time. Those are the only values the subparser and the expression read,
-   so nothing else goes in. Their ordering is the only thing about the slots
-   that is not already determined by what they are read for.
+4. Each attestation carries exactly three values, in this order: the symbol,
+   then the price, then the time. Those are the only values the subparser and
+   the expression read, so nothing else goes in.
 5. The price and the time are Rain Floats. The expression multiplies the price
    by the mint amount and compares the time against `now()`, both of which are
    Float operations.
