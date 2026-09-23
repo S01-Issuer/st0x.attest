@@ -191,16 +191,18 @@ These concern the mint caps in `st0x.deploy`, not the binary above.
     dimensions are needed; the weightings can contribute towards them in
     whatever way is wanted, and the signed context can be provided by
     different attestors.
-24. The corporate action logic is removed from the orchestrator branch
+24. The sender and the recipient cannot be the same. This is a hard-coded
+    constraint in the orchestrator and never needs to be overridden.
+25. The corporate action logic is removed from the orchestrator branch
     altogether, since the weighting is value-based.
-25. Deploying different algorithms and weightings is then something governance
+26. Deploying different algorithms and weightings is then something governance
     handles, without rewriting the smart contract logic.
-26. The leaky bucket logic converts from Rain fixed point to Rain Floats.
-27. The leaky bucket itself prevents negative numbers once it is on Floats.
-28. Two storage slots is acceptable. Typical mints can be large — an incoming
+27. The leaky bucket logic converts from Rain fixed point to Rain Floats.
+28. The leaky bucket itself prevents negative numbers once it is on Floats.
+29. Two storage slots is acceptable. Typical mints can be large — an incoming
     OTC mint requesting $2 million in a single mint — so the gas difference
     between one slot and two is irrelevant.
-29. Zero values are not accepted. The leaky bucket library already rejects
+30. Zero values are not accepted. The leaky bucket library already rejects
     them.
 
 ## Licence
