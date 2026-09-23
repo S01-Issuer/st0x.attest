@@ -180,6 +180,13 @@ Bars are absent, never zero-filled. A minute with no eligible trades simply
 cannot be attested, and the signer MUST exit non-zero rather than emit a zero
 bar.
 
+This describes what Alpaca is documented to emit; it does not excuse the signer
+from checking. §4.3 rejects a zero field unconditionally, because a zero that
+reaches a consumer is worse than an absent bar — a zero price produces a zero
+weighting, and a rate limit charged zero for a mint is no rate limit. The
+emission rule is the reason a zero should never arrive, not a reason to trust
+that it has not.
+
 ### 4.3 Semantic checks
 
 All are terminal.

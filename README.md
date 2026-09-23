@@ -4,13 +4,21 @@ Sign and timestamp an HTTP API response so it can be verified on any EVM chain.
 
 A signer fetches a response, checks it hard, converts the values it cares about
 into 32-byte EVM words, and signs those words. A contract recovers the signer
-with `ecrecover` and gets typed `uint256`s. No JSON is parsed on chain, no
-strings cross the boundary, and nothing in the signed preimage names a chain.
+with `ecrecover` and gets Rain Floats it can do arithmetic on. No JSON is parsed
+on chain, no strings cross the boundary, and nothing in the signed preimage
+names a chain.
 
 Uncoordinated parties can each run this without talking to each other. There is
 no registry, no ceremony, no shared secret and no threshold scheme. Every signer
-emits a standalone signature; deciding how many of them to believe is the
-consuming contract's job.
+emits a standalone signature.
+
+**Deciding whether those signatures agree is deliberately not part of this
+format.** There is no median, no mean, no unanimity rule and no required
+aggregation. A consumer can take any signed value and check the others fall
+within a tolerance of it — cheaper than sorting, and it doesn't stall on
+ordinary noise. Leaving it open is what lets the policy live in a Rainlang
+expression or a governed parameter, where it can change without redeploying
+anything. See `SPEC.md` §7.4.
 
 ## Status
 

@@ -298,13 +298,49 @@ byte-identical — each signature covers that signer's own words.
    deduplicates on words, on `inner`, or on signature bytes can therefore have
    one party fill several seats of an M-of-N. Deduplicating on the recovered
    address is the only sound rule and is REQUIRED.
-5. Compare value words with `LibDecimalFloat.eq`, never with `==`, and require
-   M distinct addresses to agree.
+5. Decide whether the surviving attestations agree. **How is out of scope for
+   this specification** — see 7.4.
 
-Where the underlying quantity is continuous and exact agreement is not
-achievable, a consumer MAY instead take a median across distinct signers. A
-median needs numeric ordering regardless, so it costs nothing extra over the
-equality path. Profiles SHOULD state which model they are built for.
+Steps 1 to 4 are envelope-level and are REQUIRED of every consumer. Step 5 is
+the consumer's policy.
+
+### 7.4 Agreement is the consumer's, not the format's
+
+This specification defines no aggregation. It does not pick a median, a mean or
+a unanimity rule, and a conforming consumer is not required to aggregate at
+all.
+
+Aggregation is usually unnecessary. A consumer that needs a number only good
+enough for its purpose can take **any** of the signed values and check that the
+others agree with it within a tolerance. A few percent is often ample for a
+rate limit or a bound. That is `n - 1` comparisons and no sorting, against a
+median's ordering pass, and it degrades gracefully where a unanimity rule
+stalls on ordinary noise — including the bar restatement in the Alpaca
+profile's open question 9.1.
+
+Two things a consumer choosing that pattern should know.
+
+**The tolerance is a leakage budget, not a precision parameter.** Whoever
+submits the attestations chooses which one is the reference, so they will pick
+the most favourable value inside the band every time. A 5% tolerance does not
+mean "attestors agree to within 5%", it means "anyone may have up to 5% of
+whatever this number protects". Size it on that basis, which is a tighter
+constraint than reasoning from expected attestor noise would suggest.
+
+**Deviation from a reference is not spread.** Requiring every value within X%
+of one reference permits a total spread approaching 2X, since one value may sit
+X below the reference and another X above. Bound `max - min` instead if the
+spread itself is what matters.
+
+Whatever the rule, comparisons MUST go through `LibDecimalFloat`. A Float's
+exponent occupies the high 32 bits as a two's-complement `int32`, so a negative
+exponent reads as an enormous unsigned value: a raw `bytes32` or `uint256`
+comparison orders Floats incorrectly while looking entirely plausible on
+review.
+
+Leaving this open is what lets the policy live somewhere it can be changed — a
+Rainlang expression, a governed parameter — rather than in a redeployment of
+whatever contract consumes attestations.
 
 ## 8. On the timestamp
 
