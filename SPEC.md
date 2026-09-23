@@ -28,13 +28,6 @@ Operators being a known roster is orthogonal to this. Knowing of each other for
 redundancy planning is not runtime coordination, and it does not make the
 system decentralised in any stronger sense — see 2.1.
 
-Two consequences follow from the minter being the assembler. Availability risk
-concentrates there: if an operator cannot be reached, the minter cannot meet a
-required minimum and the mint fails, so the minimum is a liveness budget as
-much as a security one. And because the minter chooses which attestations to
-include, it also chooses which value serves as the reference in any tolerance
-check — see 7.4.
-
 Deciding how many attestations to believe, and on what basis, belongs to the
 consuming contract and is out of scope here.
 
@@ -67,10 +60,6 @@ A small, known, allowlisted set of contracted operators satisfies this. An open
 set of strangers does not satisfy it any better, and is harder to entitle,
 contract and audit.
 
-The signer set therefore SHOULD live in contract storage that the consuming
-policy reads, rather than as constants inlined in expression bytecode, so that
-who is trusted stays legible on chain and changing it is an observable event.
-
 ### 2.1.1 The signer set
 
 The operators form a pool of N with a threshold of M, where M is less than N.
@@ -95,36 +84,6 @@ must compromise all of:
 1. The signatory that requests the attestations and performs the mint.
 2. The lead, which is the issuer's signer on the price feeds.
 3. At least M of the pool operators.
-
-### 2.2 What co-signing does and does not contain
-
-Consider an attacker holding both the right to mint and the primary attestor's
-key — the realistic correlated compromise of one operator.
-
-- They are stopped **only** because the policy requires a minimum number of
-  distinct allowlisted attestors and they cannot produce the second signature.
-  A policy that accepts one attestation gains nothing from the others existing.
-- If that minimum is met dishonestly, they can still mint up to the rate
-  limit's remaining headroom at an honest price. **The rate limit, not the
-  attestor set, is the loss bound.**
-- Co-signers bound how far the *price* can be misstated, to roughly the
-  agreement tolerance. They do not bound *quantity* at all.
-
-Those are orthogonal defences and a deployment needs both. Consumers MUST
-enforce a minimum count of distinct recovered addresses; see 7.3 step 4.
-
-### 2.3 Corroboration need not match the primary in provenance
-
-A co-signer exists to confirm that the primary's value is not far wrong. It
-does not have to observe through the same data source, provided the difference
-between sources stays inside the agreement tolerance for the fields being
-checked.
-
-This matters because the primary's data entitlement is often the expensive
-part. A profile MAY allow co-signers a cheaper or more restricted source, and
-MUST then state which value words are comparable across sources and which are
-not. See `ALPACA.md` §3.1 for a worked example where prices corroborate within
-0.07% across feeds while volume differs by 98%.
 
 ## 3. Cryptographic primitives
 
@@ -370,91 +329,20 @@ identifier. Where the upstream data can still be revised after publication, the
 profile MUST declare a settlement delay and MUST require signers to observe
 only intervals older than it.
 
-### 7.3 Forming a quorum
+### 7.3 Agreement is the consumer's
 
-A consumer takes a list of attestations, recovers each independently, and then
-decides whether they agree. Nothing about verification requires them to be
-byte-identical — each signature covers that signer's own words.
+This specification defines no aggregation and does not require one. A consumer
+may take any of the signed values and accept it if the others agree within a
+deviation it chooses, given a required number of signed values.
 
-1. Recover each attestation per section 11. Reject any that fails.
-2. Require `ENVELOPE` and `PROFILE` to match the expected constants by byte,
-   and `URL_HASH` to match whatever the consumer pins.
-3. Require each `SIGNED_AT` to be within the consumer's freshness window of
-   `block.timestamp`.
-4. **Deduplicate on the recovered address, check it against the allowlist, and
-   require a minimum count.** All three are REQUIRED.
-   - A signer can legitimately produce two valid signatures over the same
-     value under two different Float encodings, and both would pass a numeric
-     agreement check. A consumer deduplicating on words, on `inner`, or on
-     signature bytes can therefore let one party fill several seats.
-     Deduplicating on the recovered address is the only sound rule.
-   - The recovered address MUST be checked against the allowlisted operator
-     set. Recovery alone proves a key signed, not that anyone trusts it.
-   - The count of distinct allowlisted addresses MUST meet a configured
-     minimum, and that minimum MUST be greater than one wherever the point of
-     the exercise is surviving a single operator's compromise. This is the
-     step that does the work; see 2.2.
-5. Decide whether the surviving attestations agree. **How is out of scope for
-   this specification** — see 7.4.
-
-Steps 1 to 4 are envelope-level and are REQUIRED of every consumer. Step 5 is
-the consumer's policy.
-
-### 7.4 Agreement is the consumer's, not the format's
-
-This specification defines no aggregation. It does not pick a median, a mean or
-a unanimity rule, and a conforming consumer is not required to aggregate at
-all.
-
-Aggregation is usually unnecessary. A consumer that needs a number only good
-enough for its purpose can take **any** of the signed values and check that the
-others agree with it within a tolerance. A few percent is often ample for a
-rate limit or a bound. That is `n - 1` comparisons and no sorting, against a
-median's ordering pass, and it degrades gracefully where a unanimity rule
-stalls on ordinary noise — including the bar restatement in the Alpaca
-profile's open question 9.1.
-
-Two things a consumer choosing that pattern should know.
-
-**The tolerance is a leakage budget, not a precision parameter.** Whoever
-submits the attestations chooses which one is the reference, so they will pick
-the most favourable value inside the band every time. A 5% tolerance does not
-mean "attestors agree to within 5%", it means "anyone may have up to 5% of
-whatever this number protects". Size it on that basis, which is a tighter
-constraint than reasoning from expected attestor noise would suggest.
-
-**Deviation from a reference is not spread.** Requiring every value within X%
-of one reference permits a total spread approaching 2X, since one value may sit
-X below the reference and another X above. Bound `max - min` instead if the
-spread itself is what matters.
-
-Whatever the rule, comparisons MUST go through `LibDecimalFloat`. A Float's
-exponent occupies the high 32 bits as a two's-complement `int32`, so a negative
-exponent reads as an enormous unsigned value: a raw `bytes32` or `uint256`
-comparison orders Floats incorrectly while looking entirely plausible on
-review.
-
-Leaving this open is what lets the policy live somewhere it can be changed — a
-Rainlang expression, a governed parameter — rather than in a redeployment of
-whatever contract consumes attestations.
+What that deviation is, and how many values are required, is set by the
+consumer — for a mint, by the mint admin — and is not predetermined here.
 
 ## 8. On the timestamp
 
 `SIGNED_AT` is a claim, enforced only by the consuming contract comparing it to
 `block.timestamp` at submission and rejecting anything staler than its own
 freshness window.
-
-Nothing stronger is worth building. RFC 3161 timestamp tokens are RSA and are
-not verifiable on the EVM at sane cost. Anchoring to a block hash pins the
-attestation to one chain and destroys the chain-agnosticism requirement. More
-importantly, **a timestamp can never be more trustworthy than the attestation
-it is attached to**: a signer willing to lie about the response body is
-willing to lie about their clock, and the scheme already depends on them not
-doing the former. Spend the effort on the number of independent signers.
-
-Where the response body itself carries an authoritative timestamp from the data
-source, a profile SHOULD sign that as a value word. It is a far stronger signal
-than `SIGNED_AT` and it is the one a consumer should generally gate on.
 
 ## 9. The gate
 
@@ -545,17 +433,6 @@ function attestor(
 32-byte type, which makes the encoding a plain concatenation with no padding
 and no ambiguity. Adding any dynamically sized member to the preimage would
 break that and would be a change of envelope.
-
-## 12. Cross-chain replay
-
-The same signature verifies on every EVM chain. That is the requirement, not a
-defect: an attestation is a claim about the world, not an action on a ledger,
-and a claim does not stop being true on another chain.
-
-Any consumer that *pays out* or otherwise takes an irreversible action on an
-attestation MUST maintain its own per-chain replay protection, keyed on
-whatever makes sense for it — the recovered address plus the value words,
-typically. The attestation layer deliberately provides none.
 
 ## 13. Output format
 

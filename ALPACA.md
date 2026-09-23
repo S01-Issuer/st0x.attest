@@ -138,45 +138,6 @@ before any transform runs. Strict decoding is what rejects it; without
 Note also that without a subscription, SIP data can only be queried when `end`
 is at least 15 minutes old. This interacts with the settlement delay in §5.
 
-### 3.1 Corroborating a SIP primary from a cheaper feed
-
-`SPEC.md` §2.3 permits a co-signing operator to observe through a different
-source than the primary, provided the gap between sources stays inside the
-agreement tolerance for the fields actually compared. Alpaca's published
-comparison for AAPL on 2023-09-29 gives the magnitudes:
-
-| Field | `sip` | `iex` | Difference |
-| --- | --- | --- | --- |
-| `o` | 172.02 | 172.015 | 0.003% |
-| `h` | 173.07 | 173.06 | 0.006% |
-| `l` | 170.341 | 170.36 | 0.011% |
-| `c` | 171.21 | 171.29 | 0.047% |
-| `vw` | 171.599691 | 171.716432 | 0.068% |
-| `v` | 51,861,083 | 923,134 | **98%** |
-| `n` | 535,134 | 12,630 | **98%** |
-
-So a deployment MAY run its primary on `sip` and its co-signers on `iex`,
-comparing only `OPEN`, `HIGH`, `LOW`, `CLOSE` and `VWAP`. A consumer doing this
-MUST exclude `VOLUME` and `TRADE_COUNT` from the agreement check entirely: IEX
-is roughly 2.5% of market volume, so those two fields do not corroborate across
-feeds and never will.
-
-It also MUST NOT pin a single `URL_HASH` constant in that configuration, since
-the primary's and co-signers' URLs differ by the `feed` parameter. It MUST
-instead pin the permitted set, or the mechanism in §3 point 3 is lost.
-
-Two limits on this, neither of which the table shows:
-
-- **That is one daily bar on the most liquid symbol listed.** A one-minute bar
-  on a thin name is a far smaller sample on both feeds, and the cross-feed
-  spread widens accordingly. A tolerance derived from AAPL daily will be too
-  tight in the general case and MUST be measured per symbol class before it is
-  relied on.
-- **A thin minute may have no IEX prints at all**, in which case no IEX bar is
-  emitted (§4.2) and the co-signer cannot attest rather than attesting wrongly.
-  That is the correct failure, but it is an availability cost that falls on the
-  minter assembling the bundle, and it scales with how illiquid the symbol is.
-
 ## 4. Response
 
 ### 4.1 Shape
