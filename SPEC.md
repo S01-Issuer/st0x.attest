@@ -28,8 +28,11 @@ The requirements as stated.
    awkward signed context positions.
 8. Two words are added to Rainlang, because the `ensure` forms are awkward
    without them.
-   - `in`, so an expression can say that a signer is in a list. One list at a
-     time for the first implementation; two lists are possible later.
+   - `in`, so an expression can say that a signer is in a list. The operand
+     specifies how many of the inputs are the things being checked: the first
+     that many values are those things, and all subsequent values are the set
+     they must be in. One list at a time for the first implementation; two
+     lists are possible later.
    - `unique`, to assert that all of the values passed to it are unique.
 9. An `agree` word is added to Rainlang, because the tolerance logic is awkward
    too. It takes the tolerance as its first argument, as a fractional limit,
@@ -48,6 +51,10 @@ illustrative; they are not decided.
 #lead-signer !The mandatory lead signer, S01 as issuer.
 #operator-1 !An allowlisted pool operator.
 #operator-2 !An allowlisted pool operator.
+#operator-3 !An allowlisted pool operator.
+#operator-4 !An allowlisted pool operator.
+#operator-5 !An allowlisted pool operator.
+#operator-6 !An allowlisted pool operator.
 #max-deviation !Fractional limit on how far apart the attested values may be. 0.01 is 1%.
 
 #weighting
@@ -59,14 +66,14 @@ using-words-from st0x-attest-subparser
   "Lead attestation missing"
 ),
 
-/* Pool operators. This example collects M = 2 from the allowlist. */
+/* Both pool attestations must come from the allowlist. The pool is six and the
+ * mint collects two, so any four operators can be down without stopping it. */
 :ensure(
-  in(attestor<1>() operator-1 operator-2)
-  "Attestor 1 not an allowlisted operator"
-),
-:ensure(
-  in(attestor<2>() operator-1 operator-2)
-  "Attestor 2 not an allowlisted operator"
+  in<2>(
+    attestor<1>() attestor<2>()
+    operator-1 operator-2 operator-3 operator-4 operator-5 operator-6
+  )
+  "Attestor not an allowlisted operator"
 ),
 
 /* No operator fills more than one seat, the lead included. */
