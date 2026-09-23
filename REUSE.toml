@@ -4,7 +4,6 @@ version = 1
 path = [
   ".github/workflows/**/",
   ".gitignore",
-  "ALPACA.md",
   "Cargo.lock",
   "Cargo.toml",
   "README.md",
