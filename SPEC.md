@@ -40,12 +40,16 @@ The requirements as stated.
    and then all of the subsequent values. It checks the highest and the lowest,
    and makes sure the highest and the lowest are no more than the tolerance
    apart from each other.
+10. An absolute variant, `agree-absolute`, sets a number — seconds, or any
+    other absolute value — that the values all have to agree within, rather
+    than a proportional limit. Timestamps use it: the attested times have to
+    agree within some threshold, and the lead time is then the timestamp used.
 
 ### Example rendering of the item 5 expression
 
 How the example in item 5 would look written out, using the subparser from item
-7 and the words from items 8 and 9. It is one expression a mint admin could
-write, not the required check. `lead`, `attestor` and `lead-price` are
+7 and the words from items 8, 9 and 10. It is one expression a mint admin
+could write, not the required check. `lead`, `attestor` and `lead-price` are
 the words from item 7; `attested-price`, `lead-time`, `attested-time` and
 `mint-amount` are illustrative and not decided.
 
@@ -85,13 +89,12 @@ using-words-from st0x-attest-subparser
   "Same operator twice"
 ),
 
-/* None of them stale. The oldest of the three sets the age. */
+/* The attested times agree with each other and with now, within max-age
+ * seconds. Passing now() as one of the values makes the same call bound the
+ * age too, since now() is always the highest of them. */
 :ensure(
-  less-than-or-equal-to(
-    sub(now() min(lead-time() attested-time<0>() attested-time<1>()))
-    max-age
-  )
-  "Attestation too old"
+  agree-absolute(max-age now() lead-time() attested-time<0>() attested-time<1>())
+  "Attestation too old or times disagree"
 ),
 
 /* Highest and lowest no more than max-deviation apart. */
@@ -107,25 +110,25 @@ weighting: mul(mint-amount() lead-price());
 
 ## 3. The operators
 
-10. The parties are uncoordinated in that they do not coordinate requests
+11. The parties are uncoordinated in that they do not coordinate requests
     between each other. Whoever is doing the minting coordinates between the
     different parties, so there is no coordination at runtime. The parties are
     aware of each other in that there is some redundancy.
-11. It does not need to be fully decentralised. What is needed is orthogonal
+12. It does not need to be fully decentralised. What is needed is orthogonal
     operators — independent organisations that are not expected to be
     compromised at the same time — so that a compromise of the main ST0x or S01
     Issuer account does not grant minting. The requirement is redundancy in the
     case of the lead being compromised.
-12. The operators are a pool, with the mint collecting a threshold M smaller
+13. The operators are a pool, with the mint collecting a threshold M smaller
     than the pool — ten attestors with the mint needing three, for example.
     Setting M at the full set would mean one attestor being down stops the mint.
     All the attestors should be equally difficult to compromise. As many
     additional signers as wanted may be added for availability redundancy, and
     the minter does not have to contact all of them.
-13. The lead is mandatory. S01 is the issuer, the entity legally issuing the
+14. The lead is mandatory. S01 is the issuer, the entity legally issuing the
     share tokens and minting them. The other entities are not legally
     responsible.
-14. To reach the signing threshold and make it possible to raise the mint cap,
+15. To reach the signing threshold and make it possible to raise the mint cap,
     an attacker would have to compromise the signatory that does the requesting
     and the minting, **and** the lead, which is the S01 signer on the price
     feeds, **and** at least M of the individual signers.
@@ -134,20 +137,20 @@ weighting: mul(mint-amount() lead-price());
 
 These concern the mint caps in `st0x.deploy`, not the binary above.
 
-15. The weighting produced by the Rainlang in section 2 is what increases the
+16. The weighting produced by the Rainlang in section 2 is what increases the
     leaky bucket, in place of global and per-token mappings holding raw token
     amounts.
-16. The per-token mappings are then not needed. Only a single global limit per
+17. The per-token mappings are then not needed. Only a single global limit per
     address is needed, because the weightings can contribute towards the global
     limit in whatever way is wanted, and the signed context can be provided by
     different attestors.
-17. Deploying different algorithms and weightings is then something governance
+18. Deploying different algorithms and weightings is then something governance
     handles, without rewriting the smart contract logic.
-18. The leaky bucket logic converts from Rain fixed point to Rain Floats.
-19. Two storage slots is acceptable. Typical mints can be large — an incoming
+19. The leaky bucket logic converts from Rain fixed point to Rain Floats.
+20. Two storage slots is acceptable. Typical mints can be large — an incoming
     OTC mint requesting $2 million in a single mint — so the gas difference
     between one slot and two is irrelevant.
-20. Zero values are not accepted. The leaky bucket library already rejects
+21. Zero values are not accepted. The leaky bucket library already rejects
     them.
 
 ## Licence
