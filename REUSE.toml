@@ -3,6 +3,7 @@ version = 1
 [[annotations]]
 path = [
   ".github/workflows/**/",
+  "ALPACA.md",
   ".gitignore",
   "Cargo.lock",
   "Cargo.toml",
