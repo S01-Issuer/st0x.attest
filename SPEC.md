@@ -17,7 +17,7 @@ The requirements as stated.
    Float operations.
 6. The symbol is an IntOrAString bytes32, so that a Rainlang string literal
    compares equal to it. This is the encoding the oracle server already uses
-   for its session tag.
+   for its session tag. It is a string, so it is compared binary, per item 12.
 7. There is no signer value and no schema version value. The signer is
    recovered from the signature. The EIP-712 typehash in item 18 separates one
    struct type from another, which is what a version value would otherwise be
@@ -45,12 +45,26 @@ The requirements as stated.
     `mint-amount` for the mint being requested.
 12. Two words are added to Rainlang, because the `ensure` forms are awkward
     without them.
-    - `in`, so an expression can say that a signer is in a list. The operand
-      specifies how many of the inputs are the things being checked: the first
-      that many values are those things, and all subsequent values are the set
-      they must be in. One list at a time for the first implementation; two
-      lists are possible later.
-    - `unique`, to assert that all of the values passed to it are unique.
+    - `binary-in`, so an expression can say that a signer is in a list. The
+      operand specifies how many of the inputs are the things being checked:
+      the first that many values are those things, and all subsequent values
+      are the set they must be in. One list at a time for the first
+      implementation; two lists are possible later.
+    - `binary-unique`, to assert that all of the values passed to it are
+      unique.
+
+    Both compare bit for bit rather than numerically, as `binary-equal-to`
+    does, because what they compare are identities — signers and symbols — not
+    quantities.
+
+    THE RULE THROUGHOUT IS THAT NUMERIC CHECKS ARE ONLY FOR NUMERICS, AND
+    STRINGS AND OTHER IDENTITIES GET BINARY CHECKS. Numerical equality decodes
+    each word as a Rain Float, and two distinct words can decode to the same
+    number: a coefficient and exponent of `(100, 0)` equals `(10, 1)`. So an
+    allowlist checked numerically can admit something that was never on it, a
+    uniqueness check can either reject two distinct signers or accept the same
+    one twice, and a symbol check can match a different token. Prices, times
+    and amounts are numerics and keep the numeric checks.
 13. An `agree` word is added to Rainlang, because the tolerance logic is awkward
     too. It always takes two tolerances — an absolute one and a proportional
     one — and then all of the subsequent values. It checks the highest and the
@@ -98,7 +112,9 @@ The requirements as stated.
 15. The expression checks the token symbol, so an attestation for one token
     cannot be used for a mint of another.
 16. `equal-to` accepts more than two inputs, all of which have to be equal. It
-    currently requires exactly two.
+    currently requires exactly two. The same applies to `binary-equal-to`,
+    which is what the symbol and lead checks use, since those compare strings
+    and identities rather than numerics.
 17. The expression checks the attested price against absolute minimum and
     maximum bounds. Attestors agreeing with each other does not catch a price
     they all got wrong.
@@ -144,14 +160,14 @@ using-words-from st0x-attest-subparser
 
 /* The lead is mandatory. */
 :ensure(
-  equal-to(lead() lead-signer)
+  binary-equal-to(lead() lead-signer)
   "Lead attestation missing"
 ),
 
 /* Both pool attestations must come from the allowlist. The pool is six and the
  * mint collects two, so any four operators can be down without stopping it. */
 :ensure(
-  in<2>(
+  binary-in<2>(
     attestor<0>() attestor<1>()
     operator-1 operator-2 operator-3 operator-4 operator-5 operator-6
   )
@@ -160,13 +176,13 @@ using-words-from st0x-attest-subparser
 
 /* No operator fills more than one seat, the lead included. */
 :ensure(
-  unique(lead() attestor<0>() attestor<1>())
+  binary-unique(lead() attestor<0>() attestor<1>())
   "Same operator twice"
 ),
 
 /* Every attestation is for the token being minted. */
 :ensure(
-  equal-to(
+  binary-equal-to(
     lead-symbol() attested-symbol<0>() attested-symbol<1>()
     mint-symbol()
   )
