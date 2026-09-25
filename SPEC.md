@@ -48,8 +48,11 @@ The requirements as stated.
     - `binary-in`, so an expression can say that a signer is in a list. The
       operand specifies how many of the inputs are the things being checked:
       the first that many values are those things, and all subsequent values
-      are the set they must be in. One list at a time for the first
-      implementation; two lists are possible later.
+      are the set they must be in. It defaults to one, so `binary-in(x a b c)`
+      asks whether `x` is in `(a b c)`. An explicit zero is not a way of
+      writing the default and reverts, since zero needles checks nothing. One
+      list at a time for the first implementation; two lists are possible
+      later.
     - `binary-unique`, to assert that all of the values passed to it are
       unique.
 
