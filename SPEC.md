@@ -70,9 +70,10 @@ The requirements as stated.
     limit is the larger of the two terms it would otherwise be dominated by
     the other one and the check would pass as though it were well formed.
 
-    Both tolerances being zero reverts. That is an exact equality check, which
-    is what `equal-to` in item 16 is for, so it means the wrong word was
-    written. Either tolerance alone may be zero.
+    At least one tolerance must be positive, or it reverts. If neither is,
+    there is no tolerance at all and the check is an exact equality, which is
+    what `equal-to` in item 16 is for, so it means the wrong word was written.
+    Either tolerance alone may be zero.
 
     The larger of the two rather than their sum, because the sum is the more
     permissive of the two and item 14 requires rounding against the caller.
