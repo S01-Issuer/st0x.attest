@@ -76,18 +76,25 @@ The requirements as stated.
     Either tolerance alone may be zero.
 
     The larger of the two rather than their sum, because the sum is the more
-    permissive of the two and item 14 requires rounding against the caller.
-    This matches Python's `math.isclose` (PEP 485) and Julia's `isapprox`;
-    `numpy.isclose` sums them instead, which PEP 485 rejects on the grounds
-    that two tolerances of similar size then allow about twice the intended
-    difference.
+    permissive of the two and the stricter reading is the one a guard should
+    take. This matches Python's `math.isclose` (PEP 485) and Julia's
+    `isapprox`; `numpy.isclose` sums them instead, which PEP 485 rejects on
+    the grounds that two tolerances of similar size then allow about twice the
+    intended difference.
 
     A single global largest magnitude, rather than one per pair, is what makes
     a single highest-to-lowest check equivalent to checking every pair: the
     spread is the largest pairwise difference, so bounding it bounds them all.
-14. Rounding always goes against the caller. `agree` rounds toward rejecting.
+14. Rounding always goes against the caller wherever the error accumulates.
     The leaky bucket rounds so that it fills at least as fast as the true
     value.
+
+    This does not extend to `agree`. Nothing accumulates there: it answers
+    into an `ensure` rather than carrying a balance forward, so a bias in its
+    answer cannot be repeated for gain, and the error is far below the
+    precision of the attested values and the slack in the tolerance the mint
+    admin chose. `agree` compares at full internal precision instead, and
+    promises no rounding direction.
 15. The expression checks the token symbol, so an attestation for one token
     cannot be used for a mint of another.
 16. `equal-to` accepts more than two inputs, all of which have to be equal. It
