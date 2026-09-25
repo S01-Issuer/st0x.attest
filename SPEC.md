@@ -54,15 +54,23 @@ The requirements as stated.
 13. An `agree` word is added to Rainlang, because the tolerance logic is awkward
     too. It always takes two tolerances — an absolute one and a proportional
     one — and then all of the subsequent values. It checks the highest and the
-    lowest, and makes sure they are no further apart than the absolute
-    tolerance plus the proportional tolerance of the largest magnitude among
-    the values.
+    lowest, and makes sure they are no further apart than whichever is larger
+    of the absolute tolerance and the proportional tolerance of the largest
+    magnitude among the values.
 
     Both tolerances are always given. A proportional tolerance alone breaks
     where the values approach zero, because the proportion of a near-zero
     quantity is not meaningful; an absolute tolerance alone does not scale.
-    The sum covers both, and neither defaults, so an expression that wants
-    only one says so by writing the other as zero rather than inheriting it.
+    Taking the larger of the two covers both, and neither defaults, so an
+    expression that wants only one says so by writing the other as zero rather
+    than inheriting it.
+
+    The larger of the two rather than their sum, because the sum is the more
+    permissive of the two and item 14 requires rounding against the caller.
+    This matches Python's `math.isclose` (PEP 485) and Julia's `isapprox`;
+    `numpy.isclose` sums them instead, which PEP 485 rejects on the grounds
+    that two tolerances of similar size then allow about twice the intended
+    difference.
 
     A single global largest magnitude, rather than one per pair, is what makes
     a single highest-to-lowest check equivalent to checking every pair: the
