@@ -1,0 +1,46 @@
+[profile.default]
+src = 'src'
+out = 'out'
+libs = ['dependencies']
+
+solc = "0.8.25"
+evm_version = "cancun"
+
+optimizer = true
+optimizer_runs = 1000000
+
+bytecode_hash = "none"
+cbor_metadata = false
+
+fs_permissions = [
+  # `script/BuildAuthoringMeta.sol` writes the raw authoring meta and
+  # `script/Build.sol` reads the cbor meta built from it.
+  { access = "read-write", path = "./meta" },
+  # `script/Build.sol` writes `src/generated/St0xAttestSubParserPointers.sol`.
+  { access = "read-write", path = "./src/generated" },
+  { access = "read", path = "./out" },
+]
+
+[dependencies]
+forge-std = "1.16.2"
+"@openzeppelin-contracts" = "5.6.1"
+"rain-datacontract" = "0.1.9"
+rain-deploy = "0.1.10"
+"rain-extrospection" = "0.1.14"
+"rain-intorastring" = "0.1.0"
+"rain-lib-hash" = "0.1.0"
+"rain-lib-memkv" = "0.2.0"
+"rain-lib-typecast" = "0.1.4"
+"rain-math-binary" = "0.1.4"
+"rain-math-float" = "0.2.4"
+"rain-math-float-deploy" = "0.1.3"
+"rain-metadata" = "0.1.7"
+rain-sol-codegen = "0.1.37"
+"rain-solmem" = "0.1.28"
+"rain-string" = "0.2.0"
+"rain-tofu-erc20-decimals" = "0.1.1"
+rainlang = "0.2.11"
+"rainlang-interface" = "0.2.9"
+
+[soldeer]
+recursive_deps = false

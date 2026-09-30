@@ -1,0 +1,10 @@
+name: Git is clean
+on: [push]
+jobs:
+  git-clean:
+    # Rebuilds the committed artifacts from committed sources —
+    # `script/build-meta.sh`, `script/Build.sol`, `forge build`, `forge fmt` —
+    # then `git diff --exit-code`, so `meta/` and `src/generated/` are current
+    # at PR time rather than only when someone remembers.
+    uses: rainlanguage/rainix/.github/workflows/rainix-copy-artifacts.yaml@main
+    secrets: inherit

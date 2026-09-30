@@ -2,3 +2,7 @@ target
 result
 .env
 .claude
+cache
+out
+dependencies
+.pre-commit-config.yaml
