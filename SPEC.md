@@ -21,7 +21,7 @@ The requirements as stated.
        for its session tag. It is a string, so it is compared binary, per
        item 12.
 7. [ ] There is no signer value and no schema version value. The signer is
-       recovered from the signature. The EIP-712 typehash in item 18 separates
+       recovered from the signature. The EIP-712 typehash in item 19 separates
        one struct type from another, which is what a version value would
        otherwise be for.
 
@@ -114,14 +114,14 @@ The requirements as stated.
     direction.
 15. [ ] The expression checks the token symbol, so an attestation for one token
         cannot be used for a mint of another.
-16. [ ] `equal-to` accepts more than two inputs, all of which have to be equal.
+16. [x] `equal-to` accepts more than two inputs, all of which have to be equal.
         It currently requires exactly two. The same applies to
         `binary-equal-to`, which is what the symbol and lead checks use, since
         those compare strings and identities rather than numerics.
 17. [ ] The expression checks the attested price against absolute minimum and
         maximum bounds. Attestors agreeing with each other does not catch a
         price they all got wrong.
-18. [ ] The ordering comparisons are variadic the same way, following Clojure's
+18. [x] The ordering comparisons are variadic the same way, following Clojure's
         `<`: each argument is compared to the next, so
         `less-than-or-equal-to(a b c)` holds when `a <= b <= c`. The bounds
         check is then a single call with the minimum first and the maximum last,
@@ -132,7 +132,10 @@ The requirements as stated.
         `rainlanguage/rainlang.interface` #133 already tracks it:
         `SignedContextV2` with a caller-chosen domain and `hashStruct` over the
         context words, replacing `personal_sign` over
-        `LibHashNoAlloc.hashWords`.
+        `LibHashNoAlloc.hashWords`. The expression pins the domain: it checks
+        the EIP-712 domain the attestation was signed under, so an attestor's
+        signature over the same struct for another deployment does not verify
+        here. The domain is exposed in context for the expression to read.
 20. [ ] The Rainlang is set by the mint admin globally. One logic covers all of
         the tokens and shares across all of the buckets, and there is no
         requirement for it to be more granular than that. Only the buckets are
