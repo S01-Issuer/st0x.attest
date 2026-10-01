@@ -27,7 +27,7 @@ The requirements as stated.
 
 ## 2. The on-chain check
 
-8. [ ] The on-chain check is a Rainlang expression. It takes the values
+8. [x] The on-chain check is a Rainlang expression. It takes the values
        available in context — such as signed context, and the token input amount
        being requested for minting — and converts them into a weighting, or
        potentially reverts.
@@ -39,7 +39,7 @@ The requirements as stated.
 10. [ ] No aggregation is required. Whether it is a median, what the aggregation
         logic is, and which oracle things come from do not have to be
         predetermined, because the mint admin sets them in the Rainlang itself.
-11. [ ] A Rainlang subparser is included, so that expressions do not have to use
+11. [x] A Rainlang subparser is included, so that expressions do not have to use
         awkward signed context positions. Its words are `lead` and `attestor<N>`
         for the signers; `lead-price`, `lead-time` and `lead-symbol` for the
         lead's values; `attested-price<N>`, `attested-time<N>` and
@@ -141,7 +141,7 @@ The requirements as stated.
         the EIP-712 domain the attestation was signed under, so an attestor's
         signature over the same struct for another deployment does not verify
         here. The domain is exposed in context for the expression to read.
-20. [ ] The Rainlang is set by the mint admin globally. One logic covers all of
+20. [x] The Rainlang is set by the mint admin globally. One logic covers all of
         the tokens and shares across all of the buckets, and there is no
         requirement for it to be more granular than that. Only the buckets are
         granular. It is a per-chain setting, so it is up to the admin to make
@@ -264,10 +264,10 @@ weighting: mul(mint-amount() lead-price());
 
 These concern the mint caps in `st0x.deploy`.
 
-26. [ ] The weighting produced by the Rainlang in section 2 is what increases
+26. [x] The weighting produced by the Rainlang in section 2 is what increases
         the leaky bucket, in place of mappings holding raw token amounts. The
         Rainlang is what converts amounts into values.
-27. [ ] The per-token logic is removed from the orchestrator branch. That branch
+27. [x] The per-token logic is removed from the orchestrator branch. That branch
         has a per-token limit and no limits for recipients. The per-token limit
         goes, and value-based limits per recipient and per minter take its
         place. The cap and the leak rate are what is set per sender and per
@@ -275,20 +275,20 @@ These concern the mint caps in `st0x.deploy`.
         those two dimensions are needed; the weightings can contribute towards
         them in whatever way is wanted, and the signed context can be provided
         by different attestors.
-28. [ ] The sender and the recipient cannot be the same. This is a hard-coded
+28. [x] The sender and the recipient cannot be the same. This is a hard-coded
         constraint in the orchestrator and never needs to be overridden.
-29. [ ] The corporate action logic is removed from the orchestrator branch
+29. [x] The corporate action logic is removed from the orchestrator branch
         altogether, since the weighting is value-based.
-30. [ ] Deploying different algorithms and weightings is then something
+30. [x] Deploying different algorithms and weightings is then something
         governance handles, without rewriting the smart contract logic.
-31. [ ] The leaky bucket logic converts from Rain fixed point to Rain Floats.
-32. [ ] The leaky bucket itself prevents negative numbers once it is on Floats.
-33. [ ] Two storage slots is acceptable. Typical mints can be large — an
+31. [x] The leaky bucket logic converts from Rain fixed point to Rain Floats.
+32. [x] The leaky bucket itself prevents negative numbers once it is on Floats.
+33. [x] Two storage slots is acceptable. Typical mints can be large — an
         incoming OTC mint requesting $2 million in a single mint — so the gas
         difference between one slot and two is irrelevant.
-34. [ ] Zero values are not accepted. The leaky bucket library already rejects
+34. [x] Zero values are not accepted. The leaky bucket library already rejects
         them.
-35. [ ] A test pins that a mint with fewer than M attestations is refused by the
+35. [x] A test pins that a mint with fewer than M attestations is refused by the
         weighting. Today the read of the missing seat is out of bounds, and the
         allowlist check would refuse a zero seat regardless.
 
