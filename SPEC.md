@@ -280,10 +280,12 @@ These concern the mint caps in `st0x.deploy`.
 32. [ ] The leaky bucket itself prevents negative numbers once it is on Floats.
 33. [ ] Two storage slots is acceptable. Typical mints can be large — an
         incoming OTC mint requesting $2 million in a single mint — so the gas
-        difference between one slot and two is irrelevant. . [ ] A test pins
-        that a mint with fewer than M attestations is refused by the weighting.
-        Today the read of the missing seat is out of bounds, and the allowlist
-        check would refuse a zero seat regardless.
+        difference between one slot and two is irrelevant.
+34. [ ] Zero values are not accepted. The leaky bucket library already rejects
+        them.
+35. [ ] A test pins that a mint with fewer than M attestations is refused by the
+        weighting. Today the read of the missing seat is out of bounds, and the
+        allowlist check would refuse a zero seat regardless.
 
 ## Licence
 
