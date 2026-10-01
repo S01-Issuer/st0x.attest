@@ -246,7 +246,10 @@ weighting: mul(mint-amount() lead-price());
         Setting M at the full set would mean one attestor being down stops the
         mint. All the attestors should be equally difficult to compromise. As
         many additional signers as wanted may be added for availability
-        redundancy, and the minter does not have to contact all of them.
+        redundancy, and the minter does not have to contact all of them. A test
+        pins that a mint with fewer than M attestations is refused by the
+        weighting: today the read of the missing seat is out of bounds, and the
+        allowlist check would refuse a zero seat regardless.
 24. [ ] The lead is mandatory. S01 is the issuer, the entity legally issuing the
         share tokens and minting them. The other entities are not legally
         responsible.
