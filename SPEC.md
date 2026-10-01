@@ -102,9 +102,14 @@ The requirements as stated.
     A single global largest magnitude, rather than one per pair, is what makes a
     single highest-to-lowest check equivalent to checking every pair: the spread
     is the largest pairwise difference, so bounding it bounds them all.
-14. [ ] Rounding always goes against the caller wherever the error accumulates.
-        The leaky bucket rounds so that it fills at least as fast as the true
-        value.
+14. [x] Rounding error is bounded at one unit in the 67th significant digit, and
+        may go either way. `rain.math.float` truncates toward zero on every
+        lossy operation and has no rounding mode; the charge, the bucket level
+        and the headroom each inherit that, so a bucket can under-fill by at
+        most one unit in the 67th digit per step. 18-decimal amounts at ordinary
+        prices span about 25 digits, so no step is lossy in practice.
+        S01-Issuer/st0x.deploy #398–#401 record the exact cases. Ruled
+        2026-10-01.
 
     This does not extend to `agree`. Nothing accumulates there: it answers into
     an `ensure` rather than carrying a balance forward, so a bias in its answer
