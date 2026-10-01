@@ -246,10 +246,7 @@ weighting: mul(mint-amount() lead-price());
         Setting M at the full set would mean one attestor being down stops the
         mint. All the attestors should be equally difficult to compromise. As
         many additional signers as wanted may be added for availability
-        redundancy, and the minter does not have to contact all of them. A test
-        pins that a mint with fewer than M attestations is refused by the
-        weighting: today the read of the missing seat is out of bounds, and the
-        allowlist check would refuse a zero seat regardless.
+        redundancy, and the minter does not have to contact all of them.
 24. [ ] The lead is mandatory. S01 is the issuer, the entity legally issuing the
         share tokens and minting them. The other entities are not legally
         responsible.
@@ -283,9 +280,10 @@ These concern the mint caps in `st0x.deploy`.
 32. [ ] The leaky bucket itself prevents negative numbers once it is on Floats.
 33. [ ] Two storage slots is acceptable. Typical mints can be large — an
         incoming OTC mint requesting $2 million in a single mint — so the gas
-        difference between one slot and two is irrelevant.
-34. [ ] Zero values are not accepted. The leaky bucket library already rejects
-        them.
+        difference between one slot and two is irrelevant. . [ ] A test pins
+        that a mint with fewer than M attestations is refused by the weighting.
+        Today the read of the missing seat is out of bounds, and the allowlist
+        check would refuse a zero seat regardless.
 
 ## Licence
 
